@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 
 import { AvatarFallback } from "@/components/ui/avatar";
 import { AvatarImage } from "@/components/ui/avatar";
@@ -69,6 +69,12 @@ export function AgentGrid({
 }: AgentGridProps) {
   const [yourAgentsTab, setYourAgentsTab] = useState<"saved" | "latest">("saved");
   const [favouritedSectionIds, setFavouritedSectionIds] = useState<Set<string>>(new Set());
+  const scrollWrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const viewport = scrollWrapperRef.current?.querySelector("[data-slot=scroll-area-viewport]");
+    if (viewport instanceof HTMLElement) viewport.scrollTop = 0;
+  }, [selectedCategory, selectedTagId]);
 
   const toggleSectionFavourite = (sectionId: string) => {
     setFavouritedSectionIds((prev) => {
@@ -124,8 +130,9 @@ export function AgentGrid({
         />
       </header>
 
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="px-10 py-6 lg:px-16 xl:px-28">
+      <div ref={scrollWrapperRef} className="min-h-0 flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          <div className="px-10 py-6 lg:px-16 xl:px-28">
           {filteredSections.length === 0 ? (
             <div className="flex h-64 flex-col items-center justify-center text-muted-foreground">
               <p className="text-sm">No agents found</p>
@@ -193,8 +200,9 @@ export function AgentGrid({
               ))}
             </div>
           )}
-        </div>
-      </ScrollArea>
+          </div>
+        </ScrollArea>
+      </div>
     </main>
   );
 }
