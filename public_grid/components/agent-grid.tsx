@@ -22,6 +22,7 @@ interface Agent {
   labels?: string[];
   interfaceType?: "Form" | "Batch" | "Chat";
   runsCount?: number;
+  runnersCount?: number;
 }
 
 interface AgentSection {
@@ -155,11 +156,11 @@ export function AgentGrid({
                     <h2 className="text-sm font-semibold text-foreground">
                       {section.title}
                     </h2>
-                    <span className="flex size-5 items-center justify-center rounded-md bg-muted text-xs font-medium text-muted-foreground">
+                    <span className="flex size-6 min-w-6 items-center justify-center rounded-md border border-border bg-muted/90 text-xs font-medium text-foreground">
                       {section.agents.length}
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                     {section.agents.map((agent) => (
                       <AgentCard
                         key={agent.id}
@@ -173,6 +174,7 @@ export function AgentGrid({
                         labels={agent.labels}
                         interfaceType={agent.interfaceType}
                         runsCount={agent.runsCount}
+                        runnersCount={agent.runnersCount}
                       />
                     ))}
                   </div>

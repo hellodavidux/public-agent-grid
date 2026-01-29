@@ -46,10 +46,6 @@ const sortOptions = [
   { value: "most-runs", label: "Most runs" },
   { value: "last-updated", label: "Last updated" },
   { value: "last-created", label: "Last created" },
-  { value: "last-viewed", label: "Last viewed" },
-  { value: "last-edited", label: "Last edited" },
-  { value: "name-asc", label: "Name A–Z" },
-  { value: "name-desc", label: "Name Z–A" },
 ];
 
 const integrationOptions = [
@@ -117,28 +113,26 @@ export function AgentFilterBar({
 
         {/* Right Side Controls */}
         <div className="flex items-center gap-2">
-          {/* Category Filter - only on All Agents tab */}
-          {selectedCategory === "all" && (
-            <Select
-              value={selectedTagId ?? "all"}
-              onValueChange={(v) => onTagSelect?.(v === "all" ? null : v)}
-            >
-              <SelectTrigger className="h-9 w-[140px] shrink-0 rounded-md border border-primary/20 bg-background text-sm shadow-sm">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {orgLabels.map((label) => (
-                  <SelectItem key={label.id} value={label.id}>
-                    {label.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          {/* Category Filter */}
+          <Select
+            value={selectedTagId ?? "all"}
+            onValueChange={(v) => onTagSelect?.(v === "all" ? null : v)}
+          >
+            <SelectTrigger className="h-9 w-[140px] shrink-0 rounded-md border border-input/90 bg-background text-sm shadow-xs focus-visible:border-ring/50 focus-visible:ring-2 focus-visible:ring-ring/25">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {orgLabels.map((label) => (
+                <SelectItem key={label.id} value={label.id}>
+                  {label.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {/* Integration Filter */}
           <Select value={integrationFilter} onValueChange={onIntegrationFilterChange}>
-            <SelectTrigger className="h-9 w-[160px] shrink-0 rounded-md border border-primary/20 bg-background text-sm shadow-sm">
+            <SelectTrigger className="h-9 w-[160px] shrink-0 rounded-md border border-input/90 bg-background text-sm shadow-xs focus-visible:border-ring/50 focus-visible:ring-2 focus-visible:ring-ring/25">
               <SelectValue placeholder="All Integrations" />
             </SelectTrigger>
             <SelectContent>
@@ -152,7 +146,7 @@ export function AgentFilterBar({
 
           {/* Interface Filter */}
           <Select value={interfaceFilter} onValueChange={onInterfaceFilterChange}>
-            <SelectTrigger className="h-9 w-[150px] shrink-0 rounded-md border border-primary/20 bg-background text-sm shadow-sm">
+            <SelectTrigger className="h-9 w-[150px] shrink-0 rounded-md border border-input/90 bg-background text-sm shadow-xs focus-visible:border-ring/50 focus-visible:ring-2 focus-visible:ring-ring/25">
               <SelectValue placeholder="All Interfaces" />
             </SelectTrigger>
             <SelectContent>
@@ -166,8 +160,8 @@ export function AgentFilterBar({
 
           {/* Sort By Select */}
           <Select value={sortBy} onValueChange={onSortByChange}>
-            <SelectTrigger className="h-9 w-[140px] shrink-0 rounded-md border border-primary/20 bg-background text-sm shadow-sm">
-              <SelectValue placeholder="Sort" />
+            <SelectTrigger className="h-9 w-[140px] shrink-0 rounded-md border border-input/90 bg-background text-sm shadow-xs focus-visible:border-ring/50 focus-visible:ring-2 focus-visible:ring-ring/25">
+              <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
               {sortOptions.map((option) => (
@@ -197,7 +191,7 @@ export function AgentFilterBar({
                 onClick={() => onTagSelect?.(isSelected ? null : label.id)}
                 className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                   isSelected
-                    ? "bg-muted text-foreground shadow-sm"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "bg-muted text-foreground/85 hover:bg-muted/90 hover:text-foreground"
                 }`}
               >

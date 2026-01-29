@@ -1,0 +1,7 @@
+[build]
+  base = "public_grid"
+  command = "npm run build"
+  publish = "public_grid/.next"
+
+[build.environment]
+  NODE_VERSION = "20"

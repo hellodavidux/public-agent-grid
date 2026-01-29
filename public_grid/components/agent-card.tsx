@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { LayoutGrid, MessageSquare, FileText, Star, Info, BarChart2, User } from "lucide-react";
+import { LayoutGrid, MessageSquare, FileText, Star, Info, BarChart2, User, Users } from "lucide-react";
 
 interface AgentCardProps {
   name: string;
@@ -21,6 +21,7 @@ interface AgentCardProps {
   createdDate?: string;
   lastUpdatedDate?: string;
   runsCount?: number;
+  runnersCount?: number;
 }
 
 const integrationIcons: Record<string, React.ReactNode> = {
@@ -83,6 +84,7 @@ export function AgentCard({
   createdDate,
   lastUpdatedDate,
   runsCount = 0,
+  runnersCount = 0,
 }: AgentCardProps) {
   return (
     <div
@@ -214,16 +216,25 @@ export function AgentCard({
                   <p className="leading-relaxed">{description}</p>
                   <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t border-border pt-2 text-[11px] text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <BarChart2 className="size-3.5 shrink-0" />
-                      {runsCount.toLocaleString()} runs
-                    </span>
-                    {(authorName || createdDate || lastUpdatedDate) && <span aria-hidden>·</span>}
-                    <span className="flex items-center gap-1">
                       <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                         <User className="size-2.5" />
                       </span>
-                      {authorName ?? "—"}
+                      {authorName ? `by ${authorName}` : "—"}
                     </span>
+                    <span aria-hidden>·</span>
+                    <span className="flex items-center gap-1">
+                      <BarChart2 className="size-3.5 shrink-0" />
+                      {runsCount.toLocaleString()} runs
+                    </span>
+                    {runnersCount > 0 && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="flex items-center gap-1">
+                          <Users className="size-3.5 shrink-0" />
+                          {runnersCount.toLocaleString()} people
+                        </span>
+                      </>
+                    )}
                     {(createdDate || lastUpdatedDate) && (
                       <>
                         <span aria-hidden>·</span>

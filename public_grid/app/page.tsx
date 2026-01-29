@@ -20,6 +20,7 @@ const allAgents = [
     createdDate: "Jan 15, 2025",
     lastUpdatedDate: "Jan 29, 2025",
     runsCount: 1247,
+    runnersCount: 62,
   },
   {
     id: "2",
@@ -34,6 +35,7 @@ const allAgents = [
     createdDate: "Dec 3, 2024",
     lastUpdatedDate: "Jan 28, 2025",
     runsCount: 892,
+    runnersCount: 45,
   },
   {
     id: "3",
@@ -48,6 +50,7 @@ const allAgents = [
     createdDate: "Nov 20, 2024",
     lastUpdatedDate: "Jan 27, 2025",
     runsCount: 2103,
+    runnersCount: 105,
   },
   {
     id: "4",
@@ -62,6 +65,7 @@ const allAgents = [
     createdDate: "Jan 8, 2025",
     lastUpdatedDate: "Jan 29, 2025",
     runsCount: 456,
+    runnersCount: 23,
   },
   {
     id: "5",
@@ -76,6 +80,7 @@ const allAgents = [
     createdDate: "Dec 12, 2024",
     lastUpdatedDate: "Jan 26, 2025",
     runsCount: 1532,
+    runnersCount: 77,
   },
   {
     id: "6",
@@ -90,6 +95,7 @@ const allAgents = [
     createdDate: "Jan 2, 2025",
     lastUpdatedDate: "Jan 25, 2025",
     runsCount: 678,
+    runnersCount: 34,
   },
   {
     id: "7",
@@ -104,6 +110,7 @@ const allAgents = [
     createdDate: "Dec 18, 2024",
     lastUpdatedDate: "Jan 24, 2025",
     runsCount: 321,
+    runnersCount: 16,
   },
   {
     id: "8",
@@ -118,6 +125,7 @@ const allAgents = [
     createdDate: "Nov 28, 2024",
     lastUpdatedDate: "Jan 23, 2025",
     runsCount: 2841,
+    runnersCount: 142,
   },
   {
     id: "9",
@@ -132,6 +140,7 @@ const allAgents = [
     createdDate: "Jan 5, 2025",
     lastUpdatedDate: "Jan 22, 2025",
     runsCount: 1024,
+    runnersCount: 51,
   },
   {
     id: "10",
@@ -146,6 +155,7 @@ const allAgents = [
     createdDate: "Dec 22, 2024",
     lastUpdatedDate: "Jan 21, 2025",
     runsCount: 567,
+    runnersCount: 28,
   },
   {
     id: "11",
@@ -160,6 +170,7 @@ const allAgents = [
     createdDate: "Jan 10, 2025",
     lastUpdatedDate: "Jan 20, 2025",
     runsCount: 1893,
+    runnersCount: 95,
   },
   {
     id: "12",
@@ -174,6 +185,7 @@ const allAgents = [
     createdDate: "Dec 5, 2024",
     lastUpdatedDate: "Jan 19, 2025",
     runsCount: 734,
+    runnersCount: 37,
   },
   {
     id: "13",
@@ -188,6 +200,7 @@ const allAgents = [
     createdDate: "Jan 12, 2025",
     lastUpdatedDate: "Jan 28, 2025",
     runsCount: 912,
+    runnersCount: 46,
   },
   {
     id: "14",
@@ -202,6 +215,7 @@ const allAgents = [
     createdDate: "Dec 8, 2024",
     lastUpdatedDate: "Jan 27, 2025",
     runsCount: 1156,
+    runnersCount: 58,
   },
 ];
 
@@ -238,7 +252,7 @@ export default function AgentLibraryPage() {
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [sidebarSearchQuery, setSidebarSearchQuery] = useState("");
   const [toolSearchQuery, setToolSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("last-viewed");
+  const [sortBy, setSortBy] = useState("last-updated");
   const [integrationFilter, setIntegrationFilter] = useState("all");
   const [interfaceFilter, setInterfaceFilter] = useState("all");
 
@@ -372,7 +386,10 @@ export default function AgentLibraryPage() {
         onInterfaceFilterChange={setInterfaceFilter}
         selectedCategory={selectedCategory}
         selectedTagId={selectedTagId}
-        onTagSelect={setSelectedTagId}
+        onTagSelect={(tagId) => {
+          setSelectedTagId(tagId);
+          if (tagId != null) setSelectedCategory("all");
+        }}
         onSeeMoreCategory={(sectionId) => {
           if (sectionId.startsWith("tag-")) {
             setSelectedCategory("all");
