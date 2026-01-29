@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react"
+import React, { useLayoutEffect, useRef, useState } from "react"
 
 import {
   Tooltip,
@@ -86,6 +86,21 @@ export function AgentCard({
   runsCount = 0,
   runnersCount = 0,
 }: AgentCardProps) {
+  const labelsContainerRef = useRef<HTMLDivElement>(null);
+  const [visibleLabelCount, setVisibleLabelCount] = useState(() => Math.min(2, labels.length));
+
+  useLayoutEffect(() => {
+    setVisibleLabelCount(Math.min(2, labels.length));
+  }, [labels.length]);
+
+  useLayoutEffect(() => {
+    const el = labelsContainerRef.current;
+    if (!el || visibleLabelCount === 0) return;
+    if (el.scrollWidth > el.clientWidth) {
+      setVisibleLabelCount((n) => Math.max(0, n - 1));
+    }
+  }, [labels, visibleLabelCount]);
+
   return (
     <div
       role="button"
@@ -137,17 +152,26 @@ export function AgentCard({
             {interfaceIcons[interfaceType]}
             <span>{interfaceType}</span>
           </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              // Toggle favorite logic here
-            }}
-            className="absolute right-0 top-0 flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-muted hover:text-foreground group-hover:opacity-100"
-            aria-label="Favourite"
-          >
-            <Star className="size-4" />
-          </button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Toggle favorite logic here
+                  }}
+                  className="absolute right-0 top-0 flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                  aria-label="Favourite"
+                >
+                  <Star className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="border border-border bg-background px-2 py-1 shadow-md">
+                <span className="text-xs font-medium text-foreground">Save as favourite</span>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
@@ -159,31 +183,34 @@ export function AgentCard({
         {description}
       </p>
 
-      {/* Bottom Row: Labels (left), Stats (runs) / Info icon (right; stats by default, info on hover) */}
+      {/* Bottom Row: Labels (left), Stats (runs) / Info icon (right; stats by default, info on hover) – single line, no wrap */}
       <div className="mt-auto flex items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {labels.slice(0, 2).map((label, index) => (
+        <div
+          ref={labelsContainerRef}
+          className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-hidden"
+        >
+          {labels.slice(0, visibleLabelCount).map((label, index) => (
             <span
               key={index}
-              className="rounded-md bg-muted/70 px-2.5 py-1 text-xs font-medium text-muted-foreground"
+              className="shrink-0 rounded-md bg-muted/70 px-2.5 py-1 text-xs font-medium text-muted-foreground"
             >
               {label}
             </span>
           ))}
-          {labels.length > 2 && (
+          {labels.length > visibleLabelCount && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span
-                    className="cursor-default rounded-md bg-muted/70 px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                    className="shrink-0 cursor-default rounded-md bg-muted/70 px-2.5 py-1 text-xs font-medium text-muted-foreground"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    +{labels.length - 2}
+                    +{labels.length - visibleLabelCount}
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="border border-border bg-background px-2 py-1.5 shadow-md">
                   <span className="text-xs text-foreground">
-                    {labels.slice(2).join(", ")}
+                    {labels.slice(visibleLabelCount).join(", ")}
                   </span>
                 </TooltipContent>
               </Tooltip>

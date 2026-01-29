@@ -330,8 +330,8 @@ export default function AgentLibraryPage() {
       const allAgentsList = filteredBySidebarSearch;
 
       return [
-        { id: "top-agents", title: "Top Agents", agents: topAgents },
-        { id: "most-used-miro", title: "Most used in Miro", agents: mostUsedInMiro },
+        { id: "top-agents", title: "Top agents at Miro", agents: topAgents },
+        { id: "most-used-miro", title: "Most used at Miro", agents: mostUsedInMiro },
         { id: "all-agents", title: "All Agents", agents: allAgentsList },
       ];
     }

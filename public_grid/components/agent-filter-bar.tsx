@@ -98,7 +98,7 @@ export function AgentFilterBar({
   return (
     <div className="flex w-full flex-col gap-3">
       {/* Search and Filters Row */}
-      <div className="flex w-full flex-col gap-2 md:flex-row md:items-center">
+      <div className="mt-3 flex w-full flex-col gap-2 md:flex-row md:items-center">
         {/* Search Input */}
         <div className="relative flex w-full items-center">
           <Input

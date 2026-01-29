@@ -92,7 +92,7 @@ export function AgentGrid({
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden bg-muted/30">
-      <header className="px-6 py-4">
+      <header className="px-10 py-4 lg:px-16 xl:px-28">
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-foreground">AI Agents</h1>
           <div className="flex items-center gap-3">
@@ -125,7 +125,7 @@ export function AgentGrid({
       </header>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="p-6">
+        <div className="px-10 py-6 lg:px-16 xl:px-28">
           {filteredSections.length === 0 ? (
             <div className="flex h-64 flex-col items-center justify-center text-muted-foreground">
               <p className="text-sm">No agents found</p>
@@ -156,7 +156,7 @@ export function AgentGrid({
                     <h2 className="text-sm font-semibold text-foreground">
                       {section.title}
                     </h2>
-                    <span className="flex size-6 min-w-6 items-center justify-center rounded-md border border-border bg-muted/90 text-xs font-medium text-foreground">
+                    <span className="flex size-5 min-w-5 items-center justify-center rounded border border-border bg-muted/90 text-xs font-medium text-foreground">
                       {section.agents.length}
                     </span>
                   </div>
