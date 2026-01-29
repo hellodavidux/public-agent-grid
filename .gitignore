@@ -1,0 +1,11 @@
+# Dependencies and build output (any subdirectory)
+node_modules/
+.next/
+out/
+build/
+.vercel
+
+# Env and misc
+.env*
+.DS_Store
+*.tsbuildinfo
