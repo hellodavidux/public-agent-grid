@@ -19,7 +19,7 @@ import {
   Handshake,
 } from "lucide-react";
 import { AgentSidebar } from "@/components/agent-sidebar";
-import { AgentGrid } from "@/components/agent-grid";
+import { AgentGrid, AgentSection } from "@/components/agent-grid";
 const allAgents = [
   {
     id: "1",
@@ -381,7 +381,7 @@ export default function AgentLibraryPage() {
 
     if (selectedCategory === "all") {
       const favourites = filteredBySidebarSearch.filter((a) => favorites.has(a.id));
-      const result = [
+      const result: AgentSection[] = [
         {
           id: "all-agents",
           title: "All Agents",

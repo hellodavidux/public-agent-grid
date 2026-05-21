@@ -27,7 +27,7 @@ interface Agent {
   runnersCount?: number;
 }
 
-interface AgentSection {
+export interface AgentSection {
   id: string;
   title: string;
   agents: Agent[];
