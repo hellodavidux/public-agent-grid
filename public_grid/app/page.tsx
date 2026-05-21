@@ -1,11 +1,25 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  ShieldCheck,
+  ScanLine,
+  ScrollText,
+  FolderSearch,
+  Megaphone,
+  Newspaper,
+  TrendingUp,
+  UserSearch,
+  BarChart2,
+  Presentation,
+  Headphones,
+  GitBranch,
+  Wand2,
+  Handshake,
+} from "lucide-react";
 import { AgentSidebar } from "@/components/agent-sidebar";
 import { AgentGrid } from "@/components/agent-grid";
-import { ORG_TAGS } from "@/components/agent-filter-bar";
-
 const allAgents = [
   {
     id: "1",
@@ -15,7 +29,8 @@ const allAgents = [
     category: ["recent", "favorites", "work", "all", "your-agents"],
     integrations: ["slack", "gmail", "figma"],
     labels: ["Compliance", "Finance", "Audit"],
-    interfaceType: "Form" as const,
+    interfaceType: "Chat" as const,
+    icon: <ShieldCheck className="size-5" />,
     authorName: "Alex Chen",
     createdDate: "Jan 15, 2025",
     lastUpdatedDate: "Jan 29, 2025",
@@ -29,8 +44,9 @@ const allAgents = [
       "Detects forged files and fake borrower data with document-level AI analysis. Uses advanced ML to identify anomalies and inconsistencies.",
     category: ["recent", "favorites", "work", "all", "your-agents"],
     integrations: ["gmail", "connector", "excel"],
-    labels: ["Security", "Analysis"],
-    interfaceType: "Batch" as const,
+    labels: [],
+    interfaceType: "Chat" as const,
+    icon: <ScanLine className="size-5" />,
     authorName: "Sam Rivera",
     createdDate: "Dec 3, 2024",
     lastUpdatedDate: "Jan 28, 2025",
@@ -42,10 +58,11 @@ const allAgents = [
     name: "Memo Generator",
     description:
       "Turns messy borrower data into polished investment memos and term sheets. Automates document generation with customizable templates.",
-    category: ["favorites", "work", "all", "your-agents"],
+    category: ["favorites", "work", "all", "your-agents", "automations"],
     integrations: ["slack", "figma", "gmail"],
-    labels: ["Documents", "Sales", "Templates", "Automation"],
-    interfaceType: "Form" as const,
+    labels: [],
+    interfaceType: "Automation" as const,
+    icon: <ScrollText className="size-5" />,
     authorName: "Jordan Lee",
     createdDate: "Nov 20, 2024",
     lastUpdatedDate: "Jan 27, 2025",
@@ -57,10 +74,11 @@ const allAgents = [
     name: "File Scanner",
     description:
       "This agent scans closing folders, detects outdated or missing files. Ensures document completeness before deal finalization.",
-    category: ["favorites", "work", "all", "your-agents"],
-    integrations: ["connector", "gmail", "excel"],
+    category: ["work", "all", "your-agents", "automations"],
+    integrations: ["connector", "gmail", "excel", "slack"],
     labels: ["Validation", "Ops", "Closing", "Checklist"],
-    interfaceType: "Batch" as const,
+    interfaceType: "Automation" as const,
+    icon: <FolderSearch className="size-5" />,
     authorName: "Morgan Taylor",
     createdDate: "Jan 8, 2025",
     lastUpdatedDate: "Jan 29, 2025",
@@ -76,6 +94,7 @@ const allAgents = [
     integrations: ["slack", "figma"],
     labels: ["Marketing", "Content", "Copy", "Campaigns", "Brand"],
     interfaceType: "Chat" as const,
+    icon: <Megaphone className="size-5" />,
     authorName: "Casey Kim",
     createdDate: "Dec 12, 2024",
     lastUpdatedDate: "Jan 26, 2025",
@@ -89,8 +108,9 @@ const allAgents = [
       "Generates blog posts, social media content, and email newsletters. Optimizes content for engagement and SEO performance.",
     category: ["marketing", "all", "your-agents"],
     integrations: ["gmail", "slack"],
-    labels: ["Content", "Social"],
+    labels: [],
     interfaceType: "Form" as const,
+    icon: <Newspaper className="size-5" />,
     authorName: "Riley Walsh",
     createdDate: "Jan 2, 2025",
     lastUpdatedDate: "Jan 25, 2025",
@@ -106,6 +126,7 @@ const allAgents = [
     integrations: ["connector", "excel"],
     labels: ["SEO", "Analytics"],
     interfaceType: "Batch" as const,
+    icon: <TrendingUp className="size-5" />,
     authorName: "Quinn Davis",
     createdDate: "Dec 18, 2024",
     lastUpdatedDate: "Jan 24, 2025",
@@ -121,6 +142,7 @@ const allAgents = [
     integrations: ["slack", "connector", "gmail"],
     labels: ["Scraping", "Sales", "LinkedIn", "Leads"],
     interfaceType: "Form" as const,
+    icon: <UserSearch className="size-5" />,
     authorName: "Jamie Foster",
     createdDate: "Nov 28, 2024",
     lastUpdatedDate: "Jan 23, 2025",
@@ -136,6 +158,7 @@ const allAgents = [
     integrations: ["gmail", "figma", "notion"],
     labels: ["Analytics", "Sales"],
     interfaceType: "Chat" as const,
+    icon: <BarChart2 className="size-5" />,
     authorName: "Skyler Brooks",
     createdDate: "Jan 5, 2025",
     lastUpdatedDate: "Jan 22, 2025",
@@ -149,8 +172,9 @@ const allAgents = [
       "Generates customized sales pitches based on prospect profiles. Creates personalized presentations and proposal documents.",
     category: ["sales", "all"],
     integrations: ["slack", "gmail"],
-    labels: ["Sales", "Docs"],
+    labels: [],
     interfaceType: "Form" as const,
+    icon: <Presentation className="size-5" />,
     authorName: "Reese Morgan",
     createdDate: "Dec 22, 2024",
     lastUpdatedDate: "Jan 21, 2025",
@@ -166,6 +190,7 @@ const allAgents = [
     integrations: ["slack", "connector", "notion"],
     labels: ["Support", "Chat", "Helpdesk", "Knowledge base"],
     interfaceType: "Chat" as const,
+    icon: <Headphones className="size-5" />,
     authorName: "Drew Hayes",
     createdDate: "Jan 10, 2025",
     lastUpdatedDate: "Jan 20, 2025",
@@ -177,10 +202,11 @@ const allAgents = [
     name: "Ticket Router",
     description:
       "Automatically categorizes and prioritizes support tickets. Routes issues to appropriate teams based on urgency and type.",
-    category: ["support", "all"],
-    integrations: ["gmail", "slack", "notion"],
+    category: ["support", "all", "automations"],
+    integrations: ["gmail", "notion"],
     labels: ["Support", "Ops"],
-    interfaceType: "Batch" as const,
+    interfaceType: "Automation" as const,
+    icon: <GitBranch className="size-5" />,
     authorName: "Parker Ellis",
     createdDate: "Dec 5, 2024",
     lastUpdatedDate: "Jan 19, 2025",
@@ -196,6 +222,7 @@ const allAgents = [
     integrations: ["slack", "figma"],
     labels: ["Marketing", "Ads", "Optimization"],
     interfaceType: "Form" as const,
+    icon: <Wand2 className="size-5" />,
     authorName: "Morgan Blake",
     createdDate: "Jan 12, 2025",
     lastUpdatedDate: "Jan 28, 2025",
@@ -211,6 +238,7 @@ const allAgents = [
     integrations: ["gmail", "slack", "notion"],
     labels: ["Sales", "Pipeline", "Follow-up"],
     interfaceType: "Chat" as const,
+    icon: <Handshake className="size-5" />,
     authorName: "Jordan Reese",
     createdDate: "Dec 8, 2024",
     lastUpdatedDate: "Jan 27, 2025",
@@ -218,6 +246,44 @@ const allAgents = [
     runnersCount: 58,
   },
 ];
+
+function isScheduledAutomation(agent: (typeof allAgents)[0]) {
+  return (
+    agent.interfaceType === "Automation" &&
+    !agent.integrations.includes("slack")
+  );
+}
+
+/** All Agents grid: scheduled automation first, then non-favourites, then favourites. */
+function sortAgentsForAllGrid(
+  agents: typeof allAgents,
+  favorites: Set<string>
+) {
+  const scheduled = agents.filter(
+    (a) => isScheduledAutomation(a) && !favorites.has(a.id)
+  );
+  const nonFavourites = agents.filter((a) => !favorites.has(a.id));
+  const favourited = agents.filter((a) => favorites.has(a.id));
+
+  const ordered: typeof allAgents = [];
+  const seen = new Set<string>();
+
+  const push = (list: typeof allAgents) => {
+    for (const agent of list) {
+      if (!seen.has(agent.id)) {
+        ordered.push(agent);
+        seen.add(agent.id);
+      }
+    }
+  };
+
+  if (scheduled.length > 0) push([scheduled[0]]);
+  push(nonFavourites);
+  push(favourited);
+  push(agents);
+
+  return ordered;
+}
 
 // Match agent to filter tag (by integrations, labels, interfaceType, category)
 function agentMatchesTag(
@@ -228,38 +294,48 @@ function agentMatchesTag(
   if (agent.integrations.some((i) => i.toLowerCase() === ti)) return true;
   const labelMatch: Record<string, string[]> = {
     engineering: ["Compliance", "Security", "Validation"],
-    product: ["Analytics", "Content"],
-    operations: ["Ops", "Validation"],
     "customer-success": ["Support", "Chat"],
-    "web-scrapers": ["Scraping"],
-    "data-extractors": ["Analysis", "Security", "Analytics"],
-    "document-processors": ["Docs", "Validation", "Documents"],
-    "email-agents": [], // match by integration gmail below
     "chat-assistants": [],
     automation: ["Ops", "Validation"],
     analytics: ["Analytics", "SEO"],
-    "content-generation": ["Content", "Marketing", "Documents"],
   };
-  if (tagId === "email-agents" && agent.integrations.includes("gmail")) return true;
   if (tagId === "chat-assistants" && agent.interfaceType === "Chat") return true;
+  if (tagId === "automation" && agent.interfaceType === "Automation") return true;
   const labelsToMatch = labelMatch[tagId];
   if (labelsToMatch?.length && agent.labels.some((l) => labelsToMatch.includes(l))) return true;
   return false;
 }
 
 export default function AgentLibraryPage() {
-  const [selectedCategory, setSelectedCategory] = useState("your-agents");
+  const searchParams = useSearchParams();
+  const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get("category") ?? "all");
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
-  const [sidebarSearchQuery, setSidebarSearchQuery] = useState("");
   const [toolSearchQuery, setToolSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("last-updated");
   const [integrationFilter, setIntegrationFilter] = useState("all");
   const [interfaceFilter, setInterfaceFilter] = useState("all");
+  const [favorites, setFavorites] = useState<Set<string>>(
+    () => new Set(allAgents.filter((a) => a.category.includes("favorites")).map((a) => a.id))
+  );
+
+  const toggleFavorite = useCallback((id: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const handleCategoryChange = useCallback((cat: string) => {
     setSelectedCategory(cat);
     if (cat !== "all") setSelectedTagId(null);
   }, []);
+
+  const favoriteAgents = useMemo(
+    () => allAgents.filter((a) => favorites.has(a.id)).map((a) => ({ id: a.id, name: a.name })),
+    [favorites]
+  );
 
   const sections = useMemo(() => {
     const filteredByCategory =
@@ -269,33 +345,30 @@ export default function AgentLibraryPage() {
             agent.category.includes(selectedCategory)
           );
 
-    const filteredBySidebarSearch = sidebarSearchQuery
-      ? filteredByCategory.filter(
-          (agent) =>
-            agent.name
-              .toLowerCase()
-              .includes(sidebarSearchQuery.toLowerCase()) ||
-            agent.description
-              .toLowerCase()
-              .includes(sidebarSearchQuery.toLowerCase())
-        )
-      : filteredByCategory;
+    const filteredBySidebarSearch = filteredByCategory;
+
+    if (selectedCategory === "my-agents") {
+      return [
+        {
+          id: "my-agents",
+          title: "Favourite",
+          hideTitle: true,
+          agents: allAgents.filter((a) => favorites.has(a.id)),
+        },
+      ];
+    }
 
     if (selectedCategory === "your-agents") {
-      // For Your Agents tab, return saved agents and latest used
       const savedAgents = filteredBySidebarSearch.filter((a) =>
         a.category.includes("your-agents")
       );
-      // Latest used by you - reversed order to simulate recency
       const latestUsed = savedAgents
         .slice()
         .reverse()
         .slice(0, Math.max(0, savedAgents.length - 3));
-      
-      // Saved categories sections
       const marketingAgents = allAgents.filter((a) => a.category.includes("marketing"));
       const salesAgents = allAgents.filter((a) => a.category.includes("sales"));
-      const scrapersAgents = allAgents.filter((a) => a.category.includes("support")); // Using support as scrapers for demo
+      const scrapersAgents = allAgents.filter((a) => a.category.includes("support"));
 
       return [
         { id: "saved-agents", title: "Saved Agents", agents: savedAgents },
@@ -307,32 +380,34 @@ export default function AgentLibraryPage() {
     }
 
     if (selectedCategory === "all") {
-      if (selectedTagId) {
-        const tag = ORG_TAGS.find((t) => t.id === selectedTagId);
-        const tagLabel = tag?.label ?? selectedTagId;
-        const tagAgents = filteredBySidebarSearch.filter((a) =>
-          agentMatchesTag(a, selectedTagId)
-        );
-        return [
-          {
-            id: `tag-${selectedTagId}`,
-            title: tagLabel,
-            agents: tagAgents,
-            showStar: true,
-          },
-        ];
+      const favourites = filteredBySidebarSearch.filter((a) => favorites.has(a.id));
+      const result = [
+        {
+          id: "all-agents",
+          title: "All Agents",
+          agents: sortAgentsForAllGrid(filteredBySidebarSearch, favorites),
+        },
+      ];
+      if (favourites.length > 0) {
+        result.push({
+          id: "favourites",
+          title: "Favourites",
+          agents: favourites,
+          showCount: false,
+          initialOpen: false,
+        });
       }
-      // Top Agents - featured/popular agents
-      const topAgents = filteredBySidebarSearch.slice(0, 4);
-      // Most used in Miro - agents with most runs in the org
-      const mostUsedInMiro = filteredBySidebarSearch.slice(2, 8);
-      // All agents
-      const allAgentsList = filteredBySidebarSearch;
+      return result;
+    }
 
+    if (selectedCategory === "automations") {
       return [
-        { id: "top-agents", title: "Top agents at Miro", agents: topAgents },
-        { id: "most-used-miro", title: "Most used at Miro", agents: mostUsedInMiro },
-        { id: "all-agents", title: "All Agents", agents: allAgentsList },
+        {
+          id: "automations",
+          title: "Automations",
+          hideTitle: true,
+          agents: allAgents.filter((a) => a.category.includes("automations")),
+        },
       ];
     }
 
@@ -354,59 +429,71 @@ export default function AgentLibraryPage() {
         agents: filteredBySidebarSearch,
       },
     ];
-  }, [selectedCategory, sidebarSearchQuery, selectedTagId]);
+  }, [selectedCategory, selectedTagId, favorites]);
 
   const router = useRouter();
   const handleAgentClick = useCallback(
-    (agent: { id: string; name: string; description: string }) => {
-      router.push(
-        `/agent/${agent.id}?name=${encodeURIComponent(agent.name)}&description=${encodeURIComponent(agent.description)}`
-      );
+    (agent: {
+      id: string;
+      name: string;
+      description: string;
+      interfaceType?: string;
+      authorName?: string;
+      labels?: string[];
+    }) => {
+      const base = agent.interfaceType === "Automation"
+        ? `/automations/${agent.id}`
+        : `/agent/${agent.id}`;
+      const params = new URLSearchParams({
+        name: agent.name,
+        description: agent.description,
+      });
+      if (agent.authorName) params.set("authorName", agent.authorName);
+      if (agent.labels?.length) params.set("labels", agent.labels.join(","));
+      router.push(`${base}?${params.toString()}`);
     },
     [router]
   );
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen w-full overflow-hidden bg-muted">
       <AgentSidebar
         selectedCategory={selectedCategory}
         onCategoryChange={handleCategoryChange}
-        searchQuery={sidebarSearchQuery}
-        onSearchChange={setSidebarSearchQuery}
+        categories={[
+          { id: "work", label: "Engineering" },
+          { id: "marketing", label: "Growth" },
+          { id: "sales", label: "Revenue" },
+        ]}
+        organisationName="Stack AI Internal"
+        userName="David Hidalgo"
+        onNewChat={() => router.push("/agent/new")}
+        favoriteAgents={favoriteAgents}
       />
-      <AgentGrid
-        sections={sections}
-        toolSearchQuery={toolSearchQuery}
-        onToolSearchChange={setToolSearchQuery}
-        sortBy={sortBy}
-        onSortByChange={setSortBy}
-        integrationFilter={integrationFilter}
-        onIntegrationFilterChange={setIntegrationFilter}
-        interfaceFilter={interfaceFilter}
-        onInterfaceFilterChange={setInterfaceFilter}
-        selectedCategory={selectedCategory}
-        selectedTagId={selectedTagId}
-        onTagSelect={(tagId) => {
-          setSelectedTagId(tagId);
-          if (tagId != null) setSelectedCategory("all");
-        }}
-        onSeeMoreCategory={(sectionId) => {
-          if (sectionId.startsWith("tag-")) {
-            setSelectedCategory("all");
-            return;
-          }
-          const toCategory: Record<string, string> = {
-            "saved-agents": "your-agents",
-            "latest-used": "your-agents",
-            "top-agents": "all",
-            "most-used-miro": "all",
-            "all-agents": "all",
-          };
-          setSelectedCategory(toCategory[sectionId] ?? sectionId);
-        }}
-        onAgentClick={handleAgentClick}
-        organisationName="Miro"
-      />
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        <AgentGrid
+          sections={sections}
+          toolSearchQuery={toolSearchQuery}
+          onToolSearchChange={setToolSearchQuery}
+          sortBy={sortBy}
+          onSortByChange={setSortBy}
+          integrationFilter={integrationFilter}
+          onIntegrationFilterChange={setIntegrationFilter}
+          interfaceFilter={interfaceFilter}
+          onInterfaceFilterChange={setInterfaceFilter}
+          selectedCategory={selectedCategory}
+          selectedTagId={selectedTagId}
+          onTagSelect={(tagId) => {
+            setSelectedTagId(tagId);
+            if (tagId != null) setSelectedCategory("all");
+          }}
+          onAgentClick={handleAgentClick}
+          onNewChat={() => router.push("/agent/new")}
+          favorites={favorites}
+          onToggleFavorite={toggleFavorite}
+          title={selectedCategory === "my-agents" ? "Favourite" : "All Agents"}
+        />
+      </div>
     </div>
   );
 }

@@ -1,206 +1,134 @@
 "use client";
 
-import { useRef } from "react";
+import { Search, ArrowDownIcon, ArrowUpIcon, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Search, Star } from "lucide-react";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 export const ORG_TAGS = [
-  { id: "engineering", label: "Engineering", starred: true },
-  { id: "product", label: "Product", starred: false },
-  { id: "operations", label: "Operations", starred: false },
-  { id: "customer-success", label: "Customer Success", starred: false },
-  { id: "web-scrapers", label: "Web Scrapers", starred: false },
-  { id: "data-extractors", label: "Data Extractors", starred: false },
-  { id: "document-processors", label: "Document Processors", starred: false },
-  { id: "email-agents", label: "Email Agents", starred: false },
-  { id: "chat-assistants", label: "Chat Assistants", starred: false },
-  { id: "automation", label: "Automation", starred: false },
-  { id: "analytics", label: "Analytics", starred: false },
-  { id: "content-generation", label: "Content Generation", starred: false },
+  { id: "chat-assistants", label: "Chat Assistants" },
+  { id: "automation", label: "Automation" },
+  { id: "engineering", label: "Engineering" },
+  { id: "analytics", label: "Analytics" },
+  { id: "customer-success", label: "Customer Success" },
 ] as const;
+
+const SORT_OPTIONS = [
+  { value: "most-runs", label: "Most Used" },
+  { value: "last-updated", label: "Last Updated" },
+  { value: "last-created", label: "Recently Created" },
+  { value: "name", label: "Name" },
+];
 
 interface AgentFilterBarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   sortBy: string;
   onSortByChange: (sort: string) => void;
-  integrationFilter: string;
-  onIntegrationFilterChange: (filter: string) => void;
-  interfaceFilter: string;
-  onInterfaceFilterChange: (filter: string) => void;
-  selectedCategory?: string;
   selectedTagId?: string | null;
   onTagSelect?: (tagId: string | null) => void;
+  // kept for API compat, unused visually
+  integrationFilter?: string;
+  onIntegrationFilterChange?: (filter: string) => void;
+  interfaceFilter?: string;
+  onInterfaceFilterChange?: (filter: string) => void;
+  selectedCategory?: string;
 }
-
-const orgLabels = ORG_TAGS;
-
-const sortOptions = [
-  { value: "most-runs", label: "Most runs" },
-  { value: "last-updated", label: "Last updated" },
-  { value: "last-created", label: "Last created" },
-];
-
-const integrationOptions = [
-  { value: "all", label: "All Integrations" },
-  { value: "sharepoint", label: "SharePoint" },
-  { value: "excel", label: "Excel" },
-  { value: "word", label: "Word Docs" },
-  { value: "google-drive", label: "Google Drive" },
-  { value: "google-sheets", label: "Google Sheets" },
-  { value: "slack", label: "Slack" },
-  { value: "notion", label: "Notion" },
-  { value: "salesforce", label: "Salesforce" },
-  { value: "hubspot", label: "HubSpot" },
-  { value: "zapier", label: "Zapier" },
-];
-
-const interfaceOptions = [
-  { value: "all", label: "All Interfaces" },
-  { value: "form", label: "Form" },
-  { value: "batch", label: "Batch" },
-  { value: "chat-assistant", label: "Chat Assistant" },
-];
 
 export function AgentFilterBar({
   searchQuery,
   onSearchChange,
   sortBy,
   onSortByChange,
-  integrationFilter,
-  onIntegrationFilterChange,
-  interfaceFilter,
-  onInterfaceFilterChange,
-  selectedCategory,
   selectedTagId = null,
   onTagSelect,
+  selectedCategory,
 }: AgentFilterBarProps) {
-  const tagsScrollRef = useRef<HTMLDivElement>(null);
-
-  const handleTagsWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    const el = tagsScrollRef.current;
-    if (!el || e.deltaY === 0) return;
-    const canScrollLeft = el.scrollLeft > 0;
-    const canScrollRight = el.scrollLeft < el.scrollWidth - el.clientWidth - 1;
-    if ((e.deltaY > 0 && canScrollRight) || (e.deltaY < 0 && canScrollLeft)) {
-      e.preventDefault();
-      el.scrollLeft += e.deltaY;
-    }
-  };
+  const currentSort = SORT_OPTIONS.find((o) => o.value === sortBy) ?? SORT_OPTIONS[0];
 
   return (
-    <div className="flex w-full flex-col gap-3">
-      {/* Search and Filters Row */}
-      <div className="mt-3 flex w-full flex-col gap-2 md:flex-row md:items-center">
-        {/* Search Input */}
-        <div className="relative flex w-full items-center">
+    <div className="flex flex-col gap-4">
+      {/* Controls row */}
+      <div className="flex gap-2">
+        {/* Search */}
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="h-9 w-full rounded-md border border-input/90 bg-background pl-9 text-sm shadow-xs focus-visible:border-ring/50 focus-visible:ring-2 focus-visible:ring-ring/25"
+            className="h-8 w-full border-border pl-9 shadow-sm"
           />
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         </div>
 
-        {/* Right Side Controls */}
-        <div className="flex items-center gap-2">
-          {/* Category Filter */}
-          <Select
-            value={selectedTagId ?? "all"}
-            onValueChange={(v) => onTagSelect?.(v === "all" ? null : v)}
-          >
-            <SelectTrigger className="h-9 w-[140px] shrink-0 rounded-md border border-input/90 bg-background text-sm shadow-xs focus-visible:border-ring/50 focus-visible:ring-2 focus-visible:ring-ring/25">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {orgLabels.map((label) => (
-                <SelectItem key={label.id} value={label.id}>
-                  {label.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {/* Integration Filter */}
-          <Select value={integrationFilter} onValueChange={onIntegrationFilterChange}>
-            <SelectTrigger className="h-9 w-[160px] shrink-0 rounded-md border border-input/90 bg-background text-sm shadow-xs focus-visible:border-ring/50 focus-visible:ring-2 focus-visible:ring-ring/25">
-              <SelectValue placeholder="All Integrations" />
-            </SelectTrigger>
-            <SelectContent>
-              {integrationOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Sort dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-sm shadow-sm hover:bg-accent"
+            >
+              <span>{currentSort.label}</span>
+              <ArrowDownIcon className="size-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {SORT_OPTIONS.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                className="flex items-center justify-between gap-4"
+                onClick={() => onSortByChange(option.value)}
+              >
+                <span>{option.label}</span>
+                {option.value === sortBy && <ArrowDownIcon className="size-3.5 text-muted-foreground" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-          {/* Interface Filter */}
-          <Select value={interfaceFilter} onValueChange={onInterfaceFilterChange}>
-            <SelectTrigger className="h-9 w-[150px] shrink-0 rounded-md border border-input/90 bg-background text-sm shadow-xs focus-visible:border-ring/50 focus-visible:ring-2 focus-visible:ring-ring/25">
-              <SelectValue placeholder="All Interfaces" />
-            </SelectTrigger>
-            <SelectContent>
-              {interfaceOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Sort By Select */}
-          <Select value={sortBy} onValueChange={onSortByChange}>
-            <SelectTrigger className="h-9 w-[140px] shrink-0 rounded-md border border-input/90 bg-background text-sm shadow-xs focus-visible:border-ring/50 focus-visible:ring-2 focus-visible:ring-ring/25">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              {sortOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Filter button */}
+        <button
+          type="button"
+          className="relative flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-sm shadow-sm hover:bg-accent"
+        >
+          <SlidersHorizontal className="size-3.5" />
+          <span>Filter</span>
+          {selectedCategory === "automations" && (
+            <span className="absolute -right-1 -top-1 flex size-2.5 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex size-2 rounded-full bg-primary" />
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Org Labels Row - Only show on All Agents tab, overflow to the right */}
+      {/* Label filter badges */}
       {selectedCategory === "all" && (
-        <div
-            ref={tagsScrollRef}
-            onWheel={handleTagsWheel}
-            className="w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-          <div className="flex shrink-0 flex-nowrap items-center gap-2 py-0.5">
-          {orgLabels.map((label) => {
-            const isSelected = selectedTagId === label.id;
+        <div className="flex flex-wrap items-center gap-2">
+          {ORG_TAGS.map((tag) => {
+            const isSelected = selectedTagId === tag.id;
             return (
               <button
-                key={label.id}
+                key={tag.id}
                 type="button"
-                onClick={() => onTagSelect?.(isSelected ? null : label.id)}
-                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                onClick={() => onTagSelect?.(isSelected ? null : tag.id)}
+                className={cn(
+                  "cursor-pointer select-none rounded-md px-2.5 py-1 text-xs font-medium transition-all duration-150",
                   isSelected
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted text-foreground/85 hover:bg-muted/90 hover:text-foreground"
-                }`}
+                    ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                    : "bg-muted hover:bg-primary/10 hover:text-primary hover:shadow-sm",
+                )}
               >
-                {label.starred && <Star className="size-3 shrink-0 fill-muted-foreground text-muted-foreground" />}
-                {label.label}
+                {tag.label}
               </button>
             );
           })}
-          </div>
         </div>
       )}
     </div>

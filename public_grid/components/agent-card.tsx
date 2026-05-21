@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useLayoutEffect, useRef, useState } from "react"
+import React, { useState } from "react"
 
 import {
   Tooltip,
@@ -8,7 +8,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { LayoutGrid, MessageSquare, FileText, Star, Info, BarChart2, User, Users } from "lucide-react";
+import { LayoutGrid, MessageSquare, FileText, Zap, Star, Info, SquareChevronRight, ClockIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface AgentCardProps {
   name: string;
@@ -16,12 +17,16 @@ interface AgentCardProps {
   onStart?: () => void;
   integrations?: string[];
   labels?: string[];
-  interfaceType?: "Form" | "Batch" | "Chat";
+  interfaceType?: "Form" | "Batch" | "Chat" | "Automation";
+  iconUrl?: string;
+  icon?: React.ReactNode;
   authorName?: string;
   createdDate?: string;
   lastUpdatedDate?: string;
   runsCount?: number;
   runnersCount?: number;
+  isFavorited?: boolean;
+  onFavorite?: () => void;
 }
 
 const integrationIcons: Record<string, React.ReactNode> = {
@@ -68,213 +73,219 @@ const integrationIcons: Record<string, React.ReactNode> = {
 };
 
 const interfaceIcons: Record<string, React.ReactNode> = {
-  Form: <LayoutGrid className="size-3" />,
-  Batch: <FileText className="size-3" />,
-  Chat: <MessageSquare className="size-3" />,
+  Form: <LayoutGrid className="size-3.5 shrink-0 opacity-60" />,
+  Batch: <FileText className="size-3.5 shrink-0 opacity-60" />,
+  Chat: <MessageSquare className="size-3.5 shrink-0 opacity-60" />,
+  Automation: <Zap className="size-3.5 shrink-0 opacity-60" />,
+};
+
+const interfaceLabels: Record<string, string> = {
+  Form: "Form",
+  Batch: "Batch",
+  Chat: "Chat Assistant",
+  Automation: "Automation",
 };
 
 export function AgentCard({
   name,
   description,
   onStart,
-  integrations = ["slack", "connector", "gmail"],
-  labels = ["Scraping", "Sales"],
+  integrations = [],
+  labels = [],
   interfaceType = "Form",
-  authorName,
-  createdDate,
-  lastUpdatedDate,
+  iconUrl,
+  icon,
   runsCount = 0,
-  runnersCount = 0,
+  isFavorited = false,
+  onFavorite,
 }: AgentCardProps) {
-  const labelsContainerRef = useRef<HTMLDivElement>(null);
-  const [visibleLabelCount, setVisibleLabelCount] = useState(() => Math.min(2, labels.length));
+  const [imgError, setImgError] = useState(false);
 
-  useLayoutEffect(() => {
-    setVisibleLabelCount(Math.min(2, labels.length));
-  }, [labels.length]);
+  const FallbackIcon = interfaceType === "Chat"
+    ? MessageSquare
+    : interfaceType === "Batch"
+    ? FileText
+    : interfaceType === "Automation"
+    ? Zap
+    : LayoutGrid;
 
-  useLayoutEffect(() => {
-    const el = labelsContainerRef.current;
-    if (!el || visibleLabelCount === 0) return;
-    if (el.scrollWidth > el.clientWidth) {
-      setVisibleLabelCount((n) => Math.max(0, n - 1));
-    }
-  }, [labels, visibleLabelCount]);
+  const isAutomation = interfaceType === "Automation";
+  const isChat = interfaceType === "Chat";
+  const showTrigger = !isChat;
+  const isSlackTriggered = isAutomation && integrations.includes("slack");
+  const footerIntegrations = isSlackTriggered
+    ? integrations.filter((i) => i !== "slack")
+    : integrations;
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onStart?.()}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onStart?.();
-        }
-      }}
-      className="group relative flex h-48 cursor-pointer flex-col rounded-lg border bg-card p-4 shadow-xs transition-colors hover:border-primary/30"
-    >
-      {/* Top Row: Integrations (left); Star/Form (absolute top-right) */}
-      <div className="mb-3 flex items-start">
-        <div className="flex items-center gap-0 -space-x-3">
-          {integrations.slice(0, 3).map((integration, index) => {
-            const label = integration.charAt(0).toUpperCase() + integration.slice(1);
-            return (
-              <TooltipProvider key={index}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div
-                      className="relative z-[1] flex size-7 shrink-0 cursor-default items-center justify-center rounded-full bg-muted ring-2 ring-card transition-transform hover:z-[2] hover:scale-105"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {integrationIcons[integration] || (
-                        <div className="size-3 rounded bg-muted-foreground/20" />
-                      )}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="border border-border bg-background px-2 py-1 shadow-md">
-                    <span className="text-xs font-medium text-foreground">{label}</span>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Top-right: Form label and star button share same spot, right-aligned; star replaces Form on hover */}
-      <div className="absolute right-4 top-4 flex justify-end">
-        <div className="relative inline-flex items-center">
-          <div
-            className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground transition-opacity group-hover:opacity-0"
-            aria-hidden
-          >
-            {interfaceIcons[interfaceType]}
-            <span>{interfaceType}</span>
+    <div className="group/agent-card relative h-44 rounded-xl">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onStart?.()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onStart?.();
+          }
+        }}
+        className="relative flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-muted/20 shadow transition-all duration-150 will-change-transform group-hover/agent-card:shadow-md group-hover/agent-card:-translate-y-0.5 group-hover/agent-card:border-foreground/30"
+      >
+        {/* Header: icon + title/subtitle + toolbar */}
+        <div className="flex items-start gap-3 p-4 pb-0">
+          {/* Icon */}
+          <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+            {iconUrl && !imgError
+              ? <img src={iconUrl} alt={name} className="size-10" onError={() => setImgError(true)} />
+              : icon
+              ? <span className="flex size-5 items-center justify-center">{icon}</span>
+              : <FallbackIcon className="size-5" />}
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Toggle favorite logic here
-                  }}
-                  className="absolute right-0 top-0 flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-muted hover:text-foreground group-hover:opacity-100"
-                  aria-label="Favourite"
-                >
-                  <Star className="size-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="border border-border bg-background px-2 py-1 shadow-md">
-                <span className="text-xs font-medium text-foreground">Save as favourite</span>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </div>
 
-      {/* Header/Title */}
-      <h3 className="mb-1.5 text-sm font-semibold text-foreground">{name}</h3>
+          {/* Title + subtitle */}
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <h3 className="truncate flex-1 text-sm font-medium">{name}</h3>
+            <div className="flex items-center gap-1.5 overflow-hidden text-xs whitespace-nowrap text-muted-foreground">
+              {interfaceIcons[interfaceType]}
+              <span className="truncate">{interfaceLabels[interfaceType]}</span>
+            </div>
+          </div>
 
-      {/* Description – one line, no tooltip */}
-      <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-        {description}
-      </p>
-
-      {/* Bottom Row: Labels (left), Stats (runs) / Info icon (right; stats by default, info on hover) – single line, no wrap */}
-      <div className="mt-auto flex items-center justify-between gap-2">
-        <div
-          ref={labelsContainerRef}
-          className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-hidden"
-        >
-          {labels.slice(0, visibleLabelCount).map((label, index) => (
-            <span
-              key={index}
-              className="shrink-0 rounded-md bg-muted/70 px-2.5 py-1 text-xs font-medium text-muted-foreground"
-            >
-              {label}
-            </span>
-          ))}
-          {labels.length > visibleLabelCount && (
+          {/* Toolbar: info (hover) + star */}
+          <div className="relative flex shrink-0 items-center gap-1">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span
-                    className="shrink-0 cursor-default rounded-md bg-muted/70 px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                  <button
+                    type="button"
                     onClick={(e) => e.stopPropagation()}
+                    aria-label={`Show details for ${name}`}
+                    className="shrink-0 rounded p-1 opacity-0 transition-opacity hover:bg-muted group-hover/agent-card:opacity-100"
                   >
-                    +{labels.length - visibleLabelCount}
-                  </span>
+                    <Info className="size-4 text-muted-foreground" />
+                  </button>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="border border-border bg-background px-2 py-1.5 shadow-md">
-                  <span className="text-xs text-foreground">
-                    {labels.slice(visibleLabelCount).join(", ")}
-                  </span>
+                <TooltipContent side="top" className="max-w-xs border border-border bg-background p-3 shadow-lg">
+                  <div className="flex flex-col gap-1 text-xs text-foreground">
+                    <p className="font-semibold">{name}</p>
+                    <p className="leading-relaxed text-muted-foreground">{description}</p>
+                  </div>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          )}
-        </div>
-        <div className="relative flex shrink-0 items-center">
-          <div
-            className="flex items-center gap-1 text-[11px] text-muted-foreground transition-opacity group-hover:opacity-0"
-            aria-hidden
-          >
-            <BarChart2 className="size-3.5 shrink-0" />
-            <span>{runsCount.toLocaleString()}</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onFavorite?.(); }}
+                    aria-label={isFavorited ? `Remove ${name} from favorites` : `Add ${name} to favorites`}
+                    aria-pressed={isFavorited}
+                    className={cn("shrink-0 rounded p-1 transition-colors hover:bg-muted", !isFavorited && "opacity-0 group-hover/agent-card:opacity-100")}
+                  >
+                    <Star className={cn("size-4 transition-colors", isFavorited ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground hover:text-foreground")} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="border border-border bg-background px-2 py-1 shadow-md">
+                  <span className="text-xs font-medium">{isFavorited ? "Remove from favorites" : "Add to favorites"}</span>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={(e) => e.stopPropagation()}
-                  className="absolute right-0 top-1/2 flex size-6 shrink-0 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
-                  aria-label="More info"
+        </div>
+
+        {/* Description */}
+        <div className="overflow-hidden px-4 pt-3">
+          <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{description}</p>
+        </div>
+
+        {/* Footer: labels + trigger + integrations */}
+        <div
+          className={cn(
+            "mt-auto flex items-center gap-4 px-4 pb-4 pt-3",
+            labels.length > 0 ? "grid grid-cols-[auto_1fr]" : "justify-end",
+          )}
+        >
+          {labels.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              {labels.slice(0, 2).map((label) => (
+                <span
+                  key={label}
+                  className="inline-flex min-w-0 max-w-24 shrink-0 items-center rounded-md bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground"
                 >
-                  <Info className="size-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-xs border border-border bg-background p-3 shadow-lg">
-                <div className="flex flex-col gap-2 text-xs text-foreground">
-                  <p className="font-semibold text-foreground">{name}</p>
-                  <p className="leading-relaxed">{description}</p>
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t border-border pt-2 text-[11px] text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                        <User className="size-2.5" />
-                      </span>
-                      {authorName ? `by ${authorName}` : "—"}
+                  <span className="truncate">{label}</span>
+                </span>
+              ))}
+              {labels.length > 2 && (
+                <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                  +{labels.length - 2}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-1.5">
+            {showTrigger && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="flex size-6 shrink-0 cursor-default items-center justify-center rounded-md border bg-background transition-transform hover:scale-105"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {isAutomation
+                        ? isSlackTriggered
+                          ? integrationIcons.slack
+                          : <ClockIcon className="size-3.5 text-muted-foreground" />
+                        : interfaceType === "Batch"
+                        ? <FileText className="size-3.5 text-muted-foreground" />
+                        : <LayoutGrid className="size-3.5 text-muted-foreground" />}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="border border-border bg-background px-2 py-1 shadow-md">
+                    <span className="text-xs font-medium text-foreground">
+                      {isAutomation
+                        ? isSlackTriggered
+                          ? "Slack trigger"
+                          : "Scheduled"
+                        : interfaceLabels[interfaceType]}
                     </span>
-                    <span aria-hidden>·</span>
-                    <span className="flex items-center gap-1">
-                      <BarChart2 className="size-3.5 shrink-0" />
-                      {runsCount.toLocaleString()} runs
-                    </span>
-                    {runnersCount > 0 && (
-                      <>
-                        <span aria-hidden>·</span>
-                        <span className="flex items-center gap-1">
-                          <Users className="size-3.5 shrink-0" />
-                          {runnersCount.toLocaleString()} people
-                        </span>
-                      </>
-                    )}
-                    {(createdDate || lastUpdatedDate) && (
-                      <>
-                        <span aria-hidden>·</span>
-                        {createdDate && <span>Created {createdDate}</span>}
-                        {createdDate && lastUpdatedDate && <span aria-hidden>·</span>}
-                        {lastUpdatedDate && <span>Updated {lastUpdatedDate}</span>}
-                      </>
-                    )}
-                  </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            {footerIntegrations.length > 0 && (
+              <>
+                {showTrigger && <div className="h-4 w-px bg-border" />}
+
+                <div className="flex items-center -space-x-1.5">
+                  {footerIntegrations.slice(0, 3).map((integration, index) => (
+                    <TooltipProvider key={index}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className="flex size-6 shrink-0 cursor-default items-center justify-center rounded-md border bg-background transition-transform hover:scale-105"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {integrationIcons[integration] ?? <SquareChevronRight className="size-3" />}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="border border-border bg-background px-2 py-1 shadow-md">
+                          <span className="text-xs font-medium text-foreground capitalize">{integration}</span>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ))}
+                  {footerIntegrations.length > 3 && (
+                    <div className="flex size-6 shrink-0 items-center justify-center rounded-md border bg-muted text-[10px] font-medium text-muted-foreground">
+                      +{footerIntegrations.length - 3}
+                    </div>
+                  )}
                 </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

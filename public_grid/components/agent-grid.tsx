@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react"
-
-import { AvatarFallback } from "@/components/ui/avatar";
-import { AvatarImage } from "@/components/ui/avatar";
-import { Avatar } from "@/components/ui/avatar";
+import { useState } from "react";
+import React from "react";
+import { ChevronDownIcon, PlusIcon } from "lucide-react";
 import { AgentCard } from "@/components/agent-card";
 import { AgentFilterBar } from "@/components/agent-filter-bar";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Users, Star } from "lucide-react";
+import {
+  PageHeader,
+  pageContentInnerClass,
+  pageContentScrollClass,
+} from "@/components/page-layout";
 
 interface Agent {
   id: string;
@@ -20,7 +21,8 @@ interface Agent {
   lastUpdatedDate?: string;
   integrations?: string[];
   labels?: string[];
-  interfaceType?: "Form" | "Batch" | "Chat";
+  interfaceType?: "Form" | "Batch" | "Chat" | "Automation";
+  icon?: React.ReactNode;
   runsCount?: number;
   runnersCount?: number;
 }
@@ -29,7 +31,9 @@ interface AgentSection {
   id: string;
   title: string;
   agents: Agent[];
-  showStar?: boolean;
+  showCount?: boolean;
+  hideTitle?: boolean;
+  initialOpen?: boolean;
 }
 
 interface AgentGridProps {
@@ -45,9 +49,79 @@ interface AgentGridProps {
   selectedCategory: string;
   selectedTagId?: string | null;
   onTagSelect?: (tagId: string | null) => void;
-  onSeeMoreCategory?: (categoryId: string) => void;
   onAgentClick?: (agent: Agent) => void;
-  organisationName?: string;
+  onNewChat?: () => void;
+  isScrolledDown?: boolean;
+  favorites?: Set<string>;
+  onToggleFavorite?: (id: string) => void;
+  title?: string;
+}
+
+function GridSection({
+  section,
+  onAgentClick,
+  favorites,
+  onToggleFavorite,
+}: {
+  section: AgentSection;
+  onAgentClick?: (agent: Agent) => void;
+  favorites?: Set<string>;
+  onToggleFavorite?: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(section.initialOpen !== false);
+  const count = section.agents.length;
+
+  return (
+    <div className="space-y-6">
+      {!section.hideTitle && (
+        <header className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="flex cursor-pointer items-center gap-2 [&[data-open=false]>svg]:rotate-[-90deg]"
+            data-open={open}
+          >
+            {count > 0 && (
+              <ChevronDownIcon className="size-4 text-muted-foreground transition-transform duration-200" />
+            )}
+            <h2 className="font-medium">{section.title}</h2>
+            {section.showCount !== false && (
+              <span className="text-xs text-muted-foreground">({count})</span>
+            )}
+          </button>
+        </header>
+      )}
+
+      {open && (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {count > 0
+            ? section.agents.map((agent) => (
+                <AgentCard
+                  key={agent.id}
+                  name={agent.name}
+                  description={agent.description}
+                  onStart={() => onAgentClick?.(agent)}
+                  integrations={agent.integrations}
+                  labels={agent.labels}
+                  interfaceType={agent.interfaceType}
+                  icon={agent.icon}
+                  runsCount={agent.runsCount}
+                  runnersCount={agent.runnersCount}
+                  authorName={agent.authorName}
+                  isFavorited={favorites?.has(agent.id)}
+                  onFavorite={() => onToggleFavorite?.(agent.id)}
+                />
+              ))
+            : (
+              <div className="col-span-full flex flex-col items-center justify-center gap-1 p-12">
+                <p className="text-sm font-medium text-muted-foreground">No agents found</p>
+                <p className="text-sm text-muted-foreground">Try adjusting your search or filters</p>
+              </div>
+            )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function AgentGrid({
@@ -63,146 +137,67 @@ export function AgentGrid({
   selectedCategory,
   selectedTagId,
   onTagSelect,
-  onSeeMoreCategory,
   onAgentClick,
-  organisationName = "Miro",
+  onNewChat,
+  isScrolledDown,
+  favorites,
+  onToggleFavorite,
+  title = "All Agents",
 }: AgentGridProps) {
-  const [yourAgentsTab, setYourAgentsTab] = useState<"saved" | "latest">("saved");
-  const [favouritedSectionIds, setFavouritedSectionIds] = useState<Set<string>>(new Set());
-  const scrollWrapperRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const viewport = scrollWrapperRef.current?.querySelector("[data-slot=scroll-area-viewport]");
-    if (viewport instanceof HTMLElement) viewport.scrollTop = 0;
-  }, [selectedCategory, selectedTagId]);
-
-  const toggleSectionFavourite = (sectionId: string) => {
-    setFavouritedSectionIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(sectionId)) next.delete(sectionId);
-      else next.add(sectionId);
-      return next;
-    });
-  };
-
   const filteredSections = sections
     .map((section) => ({
       ...section,
       agents: section.agents.filter(
         (agent) =>
           agent.name.toLowerCase().includes(toolSearchQuery.toLowerCase()) ||
-          agent.description.toLowerCase().includes(toolSearchQuery.toLowerCase())
+          agent.description.toLowerCase().includes(toolSearchQuery.toLowerCase()),
       ),
     }))
-    .filter((section) => section.agents.length > 0);
+    .filter((section) => section.agents.length > 0 || section.id === sections[0]?.id);
 
   return (
-    <main className="flex flex-1 flex-col overflow-hidden bg-muted/30">
-      <header className="px-10 py-4 lg:px-16 xl:px-28">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-foreground">AI Agents</h1>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="flex items-center gap-2 rounded-md border border-border bg-transparent px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent"
-            >
-              <Users className="size-4" />
-              Share
-            </button>
-            <Avatar className="size-8 cursor-pointer">
-              <AvatarImage src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face" alt="Profile" />
-              <AvatarFallback>JD</AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-        <AgentFilterBar
-          searchQuery={toolSearchQuery}
-          onSearchChange={onToolSearchChange}
-          sortBy={sortBy}
-          onSortByChange={onSortByChange}
-          integrationFilter={integrationFilter}
-          onIntegrationFilterChange={onIntegrationFilterChange}
-          interfaceFilter={interfaceFilter}
-          onInterfaceFilterChange={onInterfaceFilterChange}
-          selectedCategory={selectedCategory}
-          selectedTagId={selectedTagId}
-          onTagSelect={onTagSelect}
-        />
-      </header>
+    <div className="relative flex min-h-0 flex-1 flex-col bg-background">
+      <PageHeader
+        isScrolledDown={isScrolledDown}
+        subRow={
+          <AgentFilterBar
+            searchQuery={toolSearchQuery}
+            onSearchChange={onToolSearchChange}
+            sortBy={sortBy}
+            onSortByChange={onSortByChange}
+            integrationFilter={integrationFilter}
+            onIntegrationFilterChange={onIntegrationFilterChange}
+            interfaceFilter={interfaceFilter}
+            onInterfaceFilterChange={onInterfaceFilterChange}
+            selectedCategory={selectedCategory}
+            selectedTagId={selectedTagId}
+            onTagSelect={onTagSelect}
+          />
+        }
+      >
+        <h1 className="text-base font-semibold">{title}</h1>
+      </PageHeader>
 
-      <div ref={scrollWrapperRef} className="min-h-0 flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className="px-10 py-6 lg:px-16 xl:px-28">
+      <div className={pageContentScrollClass}>
+        <div className={pageContentInnerClass}>
           {filteredSections.length === 0 ? (
-            <div className="flex h-64 flex-col items-center justify-center text-muted-foreground">
-              <p className="text-sm">No agents found</p>
-              <p className="text-xs">Try adjusting your search</p>
+            <div className="flex h-64 flex-col items-center justify-center gap-1 text-muted-foreground">
+              <p className="text-sm font-medium">No agents found</p>
+              <p className="text-sm">Try adjusting your search or filters</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-8">
-              {/* Render sections based on selected category */}
-              {filteredSections.map((section) => (
-                <section key={section.id}>
-                  <div className="mb-4 flex items-center gap-2">
-                    {section.showStar && (
-                      <button
-                        type="button"
-                        onClick={() => toggleSectionFavourite(section.id)}
-                        className="flex items-center justify-center rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        aria-label={favouritedSectionIds.has(section.id) ? "Unfavourite" : "Favourite"}
-                      >
-                        <Star
-                          className={`size-4 shrink-0 transition-colors ${
-                            favouritedSectionIds.has(section.id)
-                              ? "fill-muted-foreground text-muted-foreground"
-                              : "fill-none text-muted-foreground hover:text-foreground"
-                          }`}
-                        />
-                      </button>
-                    )}
-                    <h2 className="text-sm font-semibold text-foreground">
-                      {section.title}
-                    </h2>
-                    <span className="flex size-5 min-w-5 items-center justify-center rounded border border-border bg-muted/90 text-xs font-medium text-foreground">
-                      {section.agents.length}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                    {section.agents.map((agent) => (
-                      <AgentCard
-                        key={agent.id}
-                        name={agent.name}
-                        description={agent.description}
-                        onStart={() => onAgentClick?.(agent)}
-                        authorName={agent.authorName}
-                        createdDate={agent.createdDate}
-                        lastUpdatedDate={agent.lastUpdatedDate}
-                        integrations={agent.integrations}
-                        labels={agent.labels}
-                        interfaceType={agent.interfaceType}
-                        runsCount={agent.runsCount}
-                        runnersCount={agent.runnersCount}
-                      />
-                    ))}
-                  </div>
-                  {onSeeMoreCategory && section.id !== "saved-agents" && section.id !== "latest-used" && (
-                    <div className="mt-3 flex justify-center">
-                      <button
-                        type="button"
-                        onClick={() => onSeeMoreCategory(section.id)}
-                        className="text-xs font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-                      >
-                        See more
-                      </button>
-                    </div>
-                  )}
-                </section>
-              ))}
-            </div>
+            filteredSections.map((section) => (
+              <GridSection
+                key={section.id}
+                section={section}
+                onAgentClick={onAgentClick}
+                favorites={favorites}
+                onToggleFavorite={onToggleFavorite}
+              />
+            ))
           )}
-          </div>
-        </ScrollArea>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
