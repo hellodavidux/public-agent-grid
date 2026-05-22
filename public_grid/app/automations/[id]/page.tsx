@@ -29,11 +29,11 @@ import {
   MaximizeIcon,
   FilterIcon,
   ListChecksIcon,
+  ChevronDownIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   PageHeader,
-  pageContentInnerClass,
   pageContainerClass,
 } from "@/components/page-layout";
 import type { AutomationStep, AutomationTool } from "@/lib/automations-data";
@@ -87,7 +87,25 @@ function NodeIcon({ icon }: { icon?: string }) {
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 2;
 
-function WorkflowCanvas({ steps, tools }: { steps: AutomationStep[]; tools?: AutomationTool[] }) {
+function getTriggerStepLabel(
+  triggerType: "schedule" | "slack",
+  schedule?: string
+) {
+  if (triggerType === "slack") return "Message received";
+  return schedule ?? "Scheduled";
+}
+
+function WorkflowCanvas({
+  steps,
+  tools,
+  triggerType,
+  schedule,
+}: {
+  steps: AutomationStep[];
+  tools?: AutomationTool[];
+  triggerType?: "schedule" | "slack";
+  schedule?: string;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
@@ -187,8 +205,8 @@ function WorkflowCanvas({ steps, tools }: { steps: AutomationStep[]; tools?: Aut
       style={{
         background: "#fafafa",
         backgroundImage: "radial-gradient(circle, #e5e5e5 1px, transparent 1px)",
-        backgroundSize: `${22 * transform.scale}px ${22 * transform.scale}px`,
-        backgroundPosition: `${transform.x}px ${transform.y}px`,
+        backgroundSize: "22px 22px",
+        backgroundPosition: `${transform.x % 22}px ${transform.y % 22}px`,
         height: 280,
         cursor: isPanning ? "grabbing" : "grab",
         touchAction: "none",
@@ -208,9 +226,18 @@ function WorkflowCanvas({ steps, tools }: { steps: AutomationStep[]; tools?: Aut
                 t.name.toLowerCase().includes(step.label.toLowerCase()) ||
                 step.label.toLowerCase().includes(t.name.toLowerCase())
             );
+            const isTriggerStep = i === 0;
+            const stepLabel =
+              isTriggerStep && triggerType
+                ? getTriggerStepLabel(triggerType, schedule)
+                : step.label;
             const description =
               tool?.description ??
-              (i === 0
+              (isTriggerStep && triggerType === "schedule"
+                ? "Starts the workflow on this schedule"
+                : isTriggerStep && triggerType === "slack"
+                ? "When a message is posted in Slack"
+                : isTriggerStep
                 ? "Triggers the workflow automatically"
                 : i === steps.length - 1
                 ? "Outputs the result of this workflow"
@@ -226,9 +253,13 @@ function WorkflowCanvas({ steps, tools }: { steps: AutomationStep[]; tools?: Aut
                   }}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
-                    <NodeIcon icon={step.icon} />
+                    {isTriggerStep && triggerType ? (
+                      <TriggerIcon triggerType={triggerType} />
+                    ) : (
+                      <NodeIcon icon={step.icon} />
+                    )}
                     <p className="text-[11px] font-semibold text-neutral-800 leading-tight truncate">
-                      {step.label}
+                      {stepLabel}
                     </p>
                   </div>
                   <p className="text-[10px] text-neutral-500 leading-snug line-clamp-2">
@@ -306,13 +337,13 @@ function MetadataRow({
             {labels.slice(0, 2).map((label) => (
               <span
                 key={label}
-                className="inline-flex min-w-0 max-w-24 shrink-0 items-center rounded-md border border-border px-2 py-0.5 text-xs font-normal text-muted-foreground"
+                className="inline-flex min-w-0 max-w-24 shrink-0 items-center rounded-md bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground"
               >
                 <span className="truncate">{label}</span>
               </span>
             ))}
             {labels.length > 2 && (
-              <span className="shrink-0 rounded-md border border-border px-2 py-0.5 text-xs font-normal text-muted-foreground">
+              <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
                 +{labels.length - 2}
               </span>
             )}
@@ -388,6 +419,42 @@ const MOCK_RUNS = [
   { id: "r10", title: "Digest review completed", time: "9d ago" },
 ];
 
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+    >
+      <ArrowLeftIcon className="size-4" />
+      Back
+    </button>
+  );
+}
+
+function AutomationTitleRow({
+  name,
+  icon,
+  description,
+}: {
+  name: string;
+  icon: React.ReactNode;
+  description?: string;
+}) {
+  return (
+    <div className="flex flex-col items-start">
+      <div className="flex size-10 items-center justify-center overflow-hidden rounded-lg border bg-muted text-muted-foreground">
+        {icon}
+      </div>
+      <h1 className="mt-3 text-base font-semibold leading-tight">{name}</h1>
+      {description && (
+        <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+          {description}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function RunsPanel() {
   const runs = MOCK_RUNS.map((run) => ({
     id: run.id,
@@ -399,60 +466,143 @@ function RunsPanel() {
   return <AutomationRunsList runs={runs} />;
 }
 
+function AgentCard({
+  name,
+  logo,
+  description,
+}: {
+  name: string;
+  logo: React.ReactNode;
+  description: string;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (el) setIsClamped(el.scrollHeight > el.clientHeight);
+  }, []);
+
+  const isExpandable = isClamped || isExpanded;
+
+  return (
+    <div
+      role={isExpandable ? "button" : undefined}
+      tabIndex={isExpandable ? 0 : undefined}
+      onClick={isExpandable ? () => setIsExpanded((v) => !v) : undefined}
+      onKeyDown={
+        isExpandable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setIsExpanded((v) => !v);
+              }
+            }
+          : undefined
+      }
+      className={cn(
+        "group flex flex-col gap-1 rounded-lg bg-black/[0.02] px-3 py-2.5",
+        "shadow-[inset_0_0_0_0.75px_rgba(0,0,0,0.07)]",
+        isExpandable && "cursor-pointer transition-colors duration-150 hover:bg-black/[0.05]"
+      )}
+    >
+      <div className="flex items-center gap-1.5">
+        <span className="size-4 shrink-0 flex items-center justify-center [&_svg]:size-4 text-foreground">
+          {logo}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
+          {name}
+        </span>
+        {isExpandable && (
+          <ChevronDownIcon
+            className={cn(
+              "size-3.5 shrink-0 text-muted-foreground opacity-0 transition-[opacity,transform] duration-200 group-hover:opacity-100",
+              isExpanded && "rotate-180 opacity-100"
+            )}
+          />
+        )}
+      </div>
+      <p
+        ref={textRef}
+        className={cn("text-xs leading-4 text-muted-foreground", !isExpanded && "line-clamp-3")}
+      >
+
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function AgentsSection({
+  agents,
+}: {
+  agents: { id: string; name: string; logo: React.ReactNode; description: string }[];
+}) {
+  if (agents.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-muted-foreground">AI Agents in this Workflow</p>
+      <div className="grid grid-cols-2 gap-2">
+        {agents.map((agent) => (
+          <AgentCard key={agent.id} {...agent} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const sectionDividerClass = "mt-4 border-t border-border/30 pt-4";
+
 function OverviewPanel({
   automation,
 }: {
   automation: (typeof myAutomations)[number];
 }) {
   return (
-    <div className="space-y-10">
-      <section>
-        <h2 className="text-sm font-semibold mb-4">Description</h2>
-        {automation.description && (
-          <>
-            <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+    <div>
+      <section className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <h2 className="text-sm font-semibold">Description</h2>
+          {automation.description && (
+            <p className="text-sm text-muted-foreground leading-relaxed">
               {automation.description}
             </p>
-            <div className="my-6 border-t border-border" />
-          </>
-        )}
-        <MetadataRow
-          createdBy={automation.authorName}
-          labels={automation.labels}
-          triggerType={automation.triggerType}
-          schedule={automation.schedule}
-          integrations={automation.integrations}
-        />
+          )}
+        </div>
+        <div className={sectionDividerClass}>
+          <MetadataRow
+            createdBy={automation.authorName}
+            labels={automation.labels}
+            triggerType={automation.triggerType}
+            schedule={automation.schedule}
+            integrations={automation.integrations}
+          />
+        </div>
       </section>
 
       {automation.steps && automation.steps.length > 0 && (
-        <section>
-          <h2 className="text-sm font-semibold mb-4">Process</h2>
-          <WorkflowCanvas steps={automation.steps} tools={automation.tools} />
+        <section className={sectionDividerClass}>
+          <h2 className="text-sm font-semibold mb-2">Process</h2>
+          <WorkflowCanvas
+            steps={automation.steps}
+            tools={automation.tools}
+            triggerType={automation.triggerType}
+            schedule={automation.schedule}
+          />
         </section>
       )}
 
       {automation.tools && automation.tools.length > 0 && (
-        <section>
-          <h2 className="text-sm font-semibold mb-4">Agents in this Automation</h2>
-          <div className="space-y-2.5 max-w-2xl">
-            {automation.tools.map((tool) => (
-              <div
-                key={tool.id}
-                className="flex items-center gap-4 rounded-xl border border-border bg-background px-4 py-3.5"
-              >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                  {iconMap[tool.icon] ?? <ZapIcon className="size-4" />}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium leading-tight">{tool.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {tool.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+        <section className={sectionDividerClass}>
+          <AgentsSection
+            agents={automation.tools.map((tool) => ({
+              id: tool.id,
+              name: tool.name,
+              logo: iconMap[tool.icon] ?? <ZapIcon className="size-4" />,
+              description: tool.description,
+            }))}
+          />
         </section>
       )}
     </div>
@@ -465,8 +615,15 @@ export default function AutomationDetailPage() {
   const searchParams = useSearchParams();
   const id = typeof params?.id === "string" ? params.id : "";
   const automation = myAutomations.find((a) => a.id === id);
-  const [isActive, setIsActive] = useState(automation?.status === "active");
+  const justActivated = searchParams.get("activated") === "1";
+  const [isActive, setIsActive] = useState(
+    justActivated || automation?.status === "active"
+  );
   const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (justActivated) setIsActive(true);
+  }, [justActivated]);
 
   const fallbackName = searchParams.get("name") ?? "Automation";
   const fallbackDescription = searchParams.get("description") ?? "";
@@ -518,109 +675,115 @@ export default function AutomationDetailPage() {
           onClose={() => setModalOpen(false)}
           automation={fallbackAutomation}
           isSetup
+          onSave={() => router.push(`/automations/${id}?activated=1`)}
         />
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
           <PageHeader titleRowClassName="flex items-center gap-3">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center justify-center rounded-lg size-8 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
-            >
-              <ArrowLeftIcon className="size-4" />
-            </button>
-            <div className="flex items-center gap-3 flex-1">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-muted border border-border text-muted-foreground">
-                <ZapIcon className="size-5" />
-              </div>
-              <div>
-                <h1 className="text-base font-semibold leading-tight">{fallbackName}</h1>
-              </div>
-            </div>
-            <button
-              onClick={() => setModalOpen(true)}
-              className="rounded-lg px-4 py-2 text-sm font-medium bg-foreground text-background hover:bg-foreground/85 transition-colors"
-            >
-              Set up automation
-            </button>
+            <BackButton onClick={() => router.back()} />
+            <div className="flex-1" />
+            {justActivated ? (
+              <>
+                <div className="flex items-center gap-2 mr-1">
+                  <span className="text-xs font-medium text-foreground transition-colors">
+                    Active
+                  </span>
+                  <Switch checked={isActive} onCheckedChange={setIsActive} />
+                </div>
+                <button
+                  onClick={() => setModalOpen(true)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium border border-border bg-background hover:bg-muted/60 transition-colors"
+                >
+                  Edit
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setModalOpen(true)}
+                className="rounded-lg px-4 py-2 text-sm font-medium bg-foreground text-background hover:bg-foreground/85 transition-colors"
+              >
+                Set up automation
+              </button>
+            )}
           </PageHeader>
 
-          <div className="flex-1 overflow-y-auto py-4">
-          <div className={pageContentInnerClass}>
-            {fallbackDescription && (
-              <section>
-                <h2 className="text-sm font-semibold mb-4">Description</h2>
-                <p className="text-sm text-muted-foreground leading-relaxed">{fallbackDescription}</p>
-                <div className="my-6 border-t border-border" />
-                <MetadataRow
-                  createdBy={fallbackAuthorName}
-                  labels={fallbackLabels}
-                  triggerType={fallbackTriggerType}
-                  schedule={searchParams.get("schedule") ?? undefined}
-                  integrations={["gmail", "slack"]}
-                />
-              </section>
-            )}
-
-            {/* Placeholder workflow canvas */}
-            <section>
-              <h2 className="text-sm font-semibold mb-4">Workflow</h2>
-              <WorkflowCanvas
-                steps={[
-                  { id: "s1", label: "Trigger", icon: "zap" },
-                  { id: "s2", label: "Extract Data", icon: "database" },
-                  { id: "s3", label: "Validate", icon: "list-checks" },
-                  { id: "s4", label: "AI Agent", icon: "sparkles" },
-                  { id: "s5", label: "Format Output", icon: "file-text" },
-                  { id: "s6", label: "Send Email", icon: "mail" },
-                  { id: "s7", label: "Notify Slack", icon: "slack" },
-                ]}
+          <Tabs defaultValue="overview" className="flex min-h-0 flex-1 flex-col">
+            <div className="flex-1 overflow-y-auto py-4">
+            <div className={cn(pageContainerClass, "space-y-6 pb-8")}>
+              <AutomationTitleRow
+                name={fallbackName}
+                icon={<ZapIcon className="size-5" />}
+                description={fallbackDescription || undefined}
               />
-            </section>
 
-            {/* AI Agents in this Workflow */}
-            <section>
-              <h2 className="text-sm font-semibold mb-4">AI Agents in this Workflow</h2>
-              <div className="space-y-2.5">
-                {[
-                  {
-                    id: "a1",
-                    name: "OpenAI",
-                    logo: (
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="size-5">
-                        <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.896zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08-4.778 2.758a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/>
-                      </svg>
-                    ),
-                    description: "You review emails to check for compliance. You will receive a set of guidelines on how to review it and a user message with the email. You can only output a JSON...",
-                  },
-                  {
-                    id: "a2",
-                    name: "Document Writer",
-                    logo: <FileTextIcon className="size-5" />,
-                    description: "Generates polished investment memos and term sheets from structured borrower data using customizable templates.",
-                  },
-                  {
-                    id: "a3",
-                    name: "Data Extractor",
-                    logo: <DatabaseIcon className="size-5" />,
-                    description: "Extracts and normalizes key financial fields from raw borrower inputs such as DSCR, LTV, loan amount, and property type.",
-                  },
-                ].map((agent) => (
-                  <div
-                    key={agent.id}
-                    className="flex items-start gap-3.5 rounded-xl border border-border bg-muted/20 px-4 py-3.5"
-                  >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-background text-foreground">
-                      {agent.logo}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold leading-tight">{agent.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{agent.description}</p>
-                    </div>
+              <TabsList>
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="runs">Runs</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="runs" className="mt-0">
+                <RunsPanel />
+              </TabsContent>
+
+              <TabsContent value="overview" className="mt-0">
+                <div className="flex flex-col gap-4">
+                  <MetadataRow
+                    createdBy={fallbackAuthorName}
+                    labels={fallbackLabels}
+                    triggerType={fallbackTriggerType}
+                    schedule={searchParams.get("schedule") ?? undefined}
+                    integrations={["gmail", "slack"]}
+                  />
+
+                  <section className={sectionDividerClass}>
+                    <h2 className="text-sm font-semibold mb-4">Workflow</h2>
+                    <WorkflowCanvas
+                      steps={[
+                        { id: "s1", label: "Trigger", icon: "zap" },
+                        { id: "s2", label: "Extract Data", icon: "database" },
+                        { id: "s3", label: "Validate", icon: "list-checks" },
+                        { id: "s4", label: "AI Agent", icon: "sparkles" },
+                        { id: "s5", label: "Format Output", icon: "file-text" },
+                        { id: "s6", label: "Send Email", icon: "mail" },
+                        { id: "s7", label: "Notify Slack", icon: "slack" },
+                      ]}
+                      triggerType={fallbackTriggerType}
+                      schedule={searchParams.get("schedule") ?? undefined}
+                    />
+                  </section>
+
+                  <div className={sectionDividerClass}>
+                    <AgentsSection
+                      agents={[
+                        {
+                          id: "a1",
+                          name: "OpenAI",
+                          logo: (
+                            <svg viewBox="0 0 24 24" fill="currentColor" className="size-4">
+                              <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.896zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08-4.778 2.758a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/>
+                            </svg>
+                          ),
+                          description: "You review emails to check for compliance. You will receive a set of guidelines on how to review it and a user message with the email. You can only output a JSON...",
+                        },
+                        {
+                          id: "a2",
+                          name: "Document Writer",
+                          logo: <FileTextIcon className="size-4" />,
+                          description: "Generates polished investment memos and term sheets from structured borrower data using customizable templates.",
+                        },
+                        {
+                          id: "a3",
+                          name: "Data Extractor",
+                          logo: <DatabaseIcon className="size-4" />,
+                          description: "Extracts and normalizes key financial fields from raw borrower inputs such as DSCR, LTV, loan amount, and property type.",
+                        },
+                      ]}
+                    />
                   </div>
-                ))}
-              </div>
-            </section>
-          </div>
-          </div>
+                </div>
+              </TabsContent>
+            </div>
+            </div>
+          </Tabs>
         </div>
       </div>
     );
@@ -633,36 +796,14 @@ export default function AutomationDetailPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         automation={automation}
+        onSave={() => { setIsActive(true); }}
       />
 
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
         <Tabs defaultValue="runs" className="flex min-h-0 flex-1 flex-col">
-          <PageHeader
-            titleRowClassName="flex items-center gap-3"
-            subRow={
-              <TabsList>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="runs">Runs</TabsTrigger>
-              </TabsList>
-            }
-          >
-            <button
-              onClick={() => router.back()}
-              className="flex items-center justify-center rounded-lg size-8 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
-            >
-              <ArrowLeftIcon className="size-4" />
-            </button>
-
-            <div className="flex items-center gap-3 flex-1">
-              <div className="flex size-10 items-center justify-center overflow-hidden rounded-lg border border-border bg-background text-muted-foreground">
-                <span className="flex size-5 items-center justify-center">
-                  {getAgentIcon(automation.agentId, "size-5 text-muted-foreground")}
-                </span>
-              </div>
-              <div>
-                <h1 className="text-base font-semibold leading-tight">{automation.name}</h1>
-              </div>
-            </div>
+          <PageHeader titleRowClassName="flex items-center gap-3">
+            <BackButton onClick={() => router.back()} />
+            <div className="flex-1" />
 
             <div className="flex items-center gap-2 mr-1">
               <span
@@ -685,7 +826,19 @@ export default function AutomationDetailPage() {
           </PageHeader>
 
           <div className="flex-1 overflow-y-auto py-4">
-            <div className={pageContainerClass}>
+            <div className={cn(pageContainerClass, "space-y-6 pb-8")}>
+            <AutomationTitleRow
+              name={automation.name}
+              icon={
+                <span className="flex size-5 items-center justify-center">
+                  {getAgentIcon(automation.agentId, "size-5 text-muted-foreground")}
+                </span>
+              }
+            />
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="runs">Runs</TabsTrigger>
+            </TabsList>
             <TabsContent value="runs" className="mt-0">
               <RunsPanel />
             </TabsContent>
