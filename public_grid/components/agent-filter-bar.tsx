@@ -1,6 +1,7 @@
 "use client";
 
-import { Search, ArrowDownIcon, ArrowUpIcon, SlidersHorizontal } from "lucide-react";
+import { useState } from "react";
+import { Search, ArrowDownIcon, SlidersHorizontal, GlobeIcon, XIcon, ChevronDownIcon, ChevronRightIcon, MessageSquareIcon, ZapIcon, FileTextIcon, LayersIcon, CheckIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -8,6 +9,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 export const ORG_TAGS = [
@@ -25,6 +31,13 @@ const SORT_OPTIONS = [
   { value: "name", label: "Name" },
 ];
 
+const INTERFACE_OPTIONS = [
+  { value: "Chat", label: "Chat Assistant", icon: MessageSquareIcon },
+  { value: "Automation", label: "Automation", icon: ZapIcon },
+  { value: "Form", label: "Form", icon: FileTextIcon },
+  { value: "Batch", label: "Batch", icon: LayersIcon },
+];
+
 interface AgentFilterBarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
@@ -32,7 +45,6 @@ interface AgentFilterBarProps {
   onSortByChange: (sort: string) => void;
   selectedTagId?: string | null;
   onTagSelect?: (tagId: string | null) => void;
-  // kept for API compat, unused visually
   integrationFilter?: string;
   onIntegrationFilterChange?: (filter: string) => void;
   interfaceFilter?: string;
@@ -48,8 +60,12 @@ export function AgentFilterBar({
   selectedTagId = null,
   onTagSelect,
   selectedCategory,
+  interfaceFilter = "all",
+  onInterfaceFilterChange,
 }: AgentFilterBarProps) {
+  const [interfaceExpanded, setInterfaceExpanded] = useState(false);
   const currentSort = SORT_OPTIONS.find((o) => o.value === sortBy) ?? SORT_OPTIONS[0];
+  const hasActiveFilter = interfaceFilter !== "all";
 
   return (
     <div className="flex flex-col gap-4">
@@ -92,20 +108,86 @@ export function AgentFilterBar({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Filter button */}
-        <button
-          type="button"
-          className="relative flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-sm shadow-sm hover:bg-accent"
-        >
-          <SlidersHorizontal className="size-3.5" />
-          <span>Filter</span>
-          {selectedCategory === "automations" && (
-            <span className="absolute -right-1 -top-1 flex size-2.5 items-center justify-center">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex size-2 rounded-full bg-primary" />
-            </span>
-          )}
-        </button>
+        {/* Filter popover */}
+        <Popover onOpenChange={(open) => { if (!open) setInterfaceExpanded(false); }}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "relative flex h-8 items-center gap-1.5 rounded-md border bg-background px-3 text-sm shadow-sm hover:bg-accent",
+                hasActiveFilter ? "border-foreground" : "border-border",
+              )}
+            >
+              <SlidersHorizontal className="size-3.5" />
+              <span>Filter</span>
+              {hasActiveFilter && (
+                <span className="flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] font-medium text-background">
+                  1
+                </span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-0 rounded-xl shadow-lg" align="end" sideOffset={6}>
+            <p className="px-3 pt-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Filter by
+            </p>
+
+            {/* Interface section */}
+            <button
+              type="button"
+              onClick={() => setInterfaceExpanded((v) => !v)}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium hover:bg-muted/60 transition-colors"
+            >
+              <GlobeIcon className="size-4 shrink-0 text-muted-foreground" />
+              <span className="flex-1 text-left">Interface</span>
+              {interfaceExpanded
+                ? <ChevronDownIcon className="size-3.5 text-muted-foreground" />
+                : <ChevronRightIcon className="size-3.5 text-muted-foreground" />}
+            </button>
+
+            {interfaceExpanded && (
+              <div className="pb-1">
+                {INTERFACE_OPTIONS.map(({ value, label, icon: Icon }) => {
+                  const isActive = interfaceFilter === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => onInterfaceFilterChange?.(isActive ? "all" : value)}
+                      className={cn(
+                        "flex w-full items-center gap-2.5 py-1.5 pl-9 pr-3 text-sm transition-colors",
+                        isActive
+                          ? "text-foreground font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+                      )}
+                    >
+                      <Icon className="size-3.5 shrink-0" />
+                      <span className="flex-1 text-left">{label}</span>
+                      {isActive && <CheckIcon className="size-3.5" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="border-t border-border mt-1">
+              <button
+                type="button"
+                disabled={!hasActiveFilter}
+                onClick={() => onInterfaceFilterChange?.("all")}
+                className={cn(
+                  "flex w-full items-center gap-2 px-3 py-2.5 text-sm transition-colors",
+                  hasActiveFilter
+                    ? "text-destructive hover:bg-destructive/5 cursor-pointer"
+                    : "text-muted-foreground/40 cursor-not-allowed",
+                )}
+              >
+                <XIcon className="size-3.5" />
+                Clear all filters
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Label filter badges */}

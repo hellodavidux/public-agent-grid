@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
 
-export const pageContainerClass = "w-full max-w-[1400px] mx-auto px-8";
+export const pageContainerClass = "w-full max-w-[1400px] mx-auto px-14";
 export const pageContentScrollClass = "flex flex-1 flex-col overflow-y-auto py-4";
 export const pageContentInnerClass =
-  "w-full max-w-[1400px] mx-auto px-8 space-y-10 pb-8";
+  "w-full max-w-[1400px] mx-auto px-14 space-y-10 pb-8";
 
 interface PageHeaderProps {
   children: React.ReactNode;

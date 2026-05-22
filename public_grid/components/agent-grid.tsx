@@ -147,11 +147,14 @@ export function AgentGrid({
   const filteredSections = sections
     .map((section) => ({
       ...section,
-      agents: section.agents.filter(
-        (agent) =>
+      agents: section.agents.filter((agent) => {
+        const matchesSearch =
           agent.name.toLowerCase().includes(toolSearchQuery.toLowerCase()) ||
-          agent.description.toLowerCase().includes(toolSearchQuery.toLowerCase()),
-      ),
+          agent.description.toLowerCase().includes(toolSearchQuery.toLowerCase());
+        const matchesInterface =
+          interfaceFilter === "all" || agent.interfaceType === interfaceFilter;
+        return matchesSearch && matchesInterface;
+      }),
     }))
     .filter((section) => section.agents.length > 0 || section.id === sections[0]?.id);
 

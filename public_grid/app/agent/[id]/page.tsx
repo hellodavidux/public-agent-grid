@@ -29,7 +29,15 @@ import {
   PaperclipIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getChatMessages, addRecentChat, getChatLabel } from "@/lib/chats-data";
+import {
+  getChatMessages,
+  addRecentChat,
+  getChatLabel,
+  MOCK_RECENT_CHATS,
+  RECENT_CHATS_EVENT,
+  getExtraRecentChats,
+  type ChatItem,
+} from "@/lib/chats-data";
 import { getAgentIcon } from "@/lib/agent-icons";
 import { AgentSidebar } from "@/components/agent-sidebar";
 import { AgentCard } from "@/components/agent-card";
@@ -126,7 +134,20 @@ export default function AgentChatPage() {
   const [agentSearch, setAgentSearch] = useState("");
   const [agentTab, setAgentTab] = useState<"all" | "favorites">("favorites");
   const [newChatKey, setNewChatKey] = useState(0);
+  const [extraRecentChats, setExtraRecentChats] = useState<ChatItem[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
+  const pendingChatIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const refresh = () => setExtraRecentChats(getExtraRecentChats());
+    refresh();
+    window.addEventListener(RECENT_CHATS_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(RECENT_CHATS_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
 
   useEffect(() => {
     if (isSearchOpen) searchRef.current?.focus();
@@ -145,40 +166,53 @@ export default function AgentChatPage() {
     (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
-      const newId = `new-${Date.now()}`;
+      // Reuse a pending chat ID (pre-created by handleNewChat) so it gets renamed instead of duplicated
+      const convId = pendingChatIdRef.current ?? `new-${Date.now()}`;
+      pendingChatIdRef.current = null;
       addRecentChat({
-        id: newId,
+        id: convId,
         label: trimmed.slice(0, 60),
         timestamp: "Just now",
         ...(isNewChat
           ? {}
           : { agentId: id, agentName: name }),
       });
-      setActiveConv(newId);
+      setActiveConv(convId);
       setMessage("");
       if (!isNewChat && id && name) {
         router.replace(
-          `/agent/${id}?chat=${newId}&name=${encodeURIComponent(name)}&description=${encodeURIComponent(description)}`
+          `/agent/${id}?chat=${convId}&name=${encodeURIComponent(name)}&description=${encodeURIComponent(description)}`
         );
       } else if (isNewChat) {
-        router.replace(`/agent/new?chat=${newId}`);
+        router.replace(`/agent/new?chat=${convId}`);
       }
     },
     [description, id, isNewChat, name, router]
   );
+
+  const arrivedViaChat = searchParams.get("from") === "chat";
 
   const handleNewChat = useCallback(() => {
     setActiveConv(null);
     setMessage("");
     setSelectedAgents([]);
     setAgentSearch("");
-    if (id !== "new" && name) {
+    if (id !== "new" && name && !arrivedViaChat) {
+      const newId = `new-${Date.now()}`;
+      pendingChatIdRef.current = newId;
+      addRecentChat({
+        id: newId,
+        label: "New conversation",
+        timestamp: "Just now",
+        agentId: id,
+        agentName: name,
+      });
       router.push(`/agent/${id}?name=${encodeURIComponent(name)}&description=${encodeURIComponent(description)}`);
     } else {
       router.push("/agent/new");
       setNewChatKey((k) => k + 1);
     }
-  }, [id, name, description, router]);
+  }, [id, name, description, arrivedViaChat, router]);
 
   const handleBack = useCallback(() => {
     if (conversationId) {
@@ -279,12 +313,7 @@ export default function AgentChatPage() {
     </div>
   );
 
-  const RECENT_CHATS = [
-    { id: "c1", agentId: "9", title: "Summarize the Q2 report", agent: "Sales Forecaster", time: "2h ago" },
-    { id: "c2", agentId: "11", title: "Draft a customer onboarding email", agent: "Customer Support Bot", time: "Yesterday" },
-    { id: "c3", agentId: "14", title: "Analyze sales pipeline data", agent: "Deal Closer", time: "2d ago" },
-    { id: "c4", agentId: "5", title: "Compare competitor features", agent: "Campaign Writer", time: "Last week" },
-  ];
+  const recentChats = [...extraRecentChats, ...MOCK_RECENT_CHATS];
 
   const FAVOURITE_CHAT_AGENTS = [
     { id: "5", name: "Campaign Writer", description: "Creates compelling marketing copy tailored to your audience.", labels: ["Marketing", "Content"], integrations: ["slack", "figma"], runsCount: 1532 },
@@ -362,9 +391,11 @@ export default function AgentChatPage() {
                       "radial-gradient(circle, #e5e5e5 1px, transparent 1px)",
                     backgroundSize: "22px 22px",
                     WebkitMaskImage:
-                      "radial-gradient(ellipse 90% 80% at 50% 42%, #000 45%, transparent 88%)",
+                      "radial-gradient(ellipse 90% 80% at 50% 54%, #000 45%, transparent 88%), linear-gradient(to bottom, transparent 0%, transparent 6%, black 24%)",
+                    WebkitMaskComposite: "source-in",
                     maskImage:
-                      "radial-gradient(ellipse 90% 80% at 50% 42%, #000 45%, transparent 88%)",
+                      "radial-gradient(ellipse 90% 80% at 50% 54%, #000 45%, transparent 88%), linear-gradient(to bottom, transparent 0%, transparent 6%, black 24%)",
+                    maskComposite: "intersect",
                   }}
                 />
                 <div className="relative z-10 mx-auto w-full max-w-[48rem] flex flex-col items-center gap-8 text-center">
@@ -387,19 +418,7 @@ export default function AgentChatPage() {
                       }}
                       className="min-h-[72px] w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                     />
-                    {selectedAgents.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pb-2">
-                        {selectedAgents.map((a) => (
-                          <span key={a.id} className="flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-medium text-foreground">
-                            {a.name}
-                            <button type="button" onClick={() => setSelectedAgents((prev) => prev.filter((x) => x.id !== a.id))} className="ml-0.5 opacity-60 hover:opacity-100">
-                              <XIcon className="size-3" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center gap-1.5 pt-2">
                       <div className="flex items-center gap-1">
                         {/* + attach/knowledge dropdown */}
                         <DropdownMenu>
@@ -489,11 +508,23 @@ export default function AgentChatPage() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
+                      {selectedAgents.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedAgents.map((a) => (
+                            <span key={a.id} className="flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-medium text-foreground">
+                              {a.name}
+                              <button type="button" onClick={() => setSelectedAgents((prev) => prev.filter((x) => x.id !== a.id))} className="ml-0.5 opacity-60 hover:opacity-100">
+                                <XIcon className="size-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => beginConversation(message)}
                         className={cn(
-                          "flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                          "ml-auto flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors",
                           message.trim()
                             ? "bg-primary text-primary-foreground hover:bg-primary/90"
                             : "bg-muted text-muted-foreground"
@@ -517,41 +548,40 @@ export default function AgentChatPage() {
               </div>
 
               {/* Recent chats + favorites — part of the same scroll */}
-              <div className="mx-auto w-full max-w-[72rem] px-8 pb-12 space-y-10">
+              <div className="mx-auto w-full max-w-[48rem] pb-12 space-y-10">
 
                 {/* Recent chats */}
                 <div className="space-y-4">
                   <header className="flex items-center gap-2">
                     <ChevronDownIcon className="size-4 text-muted-foreground" />
                     <h2 className="font-medium">Recent chats</h2>
-                    <span className="text-xs text-muted-foreground">({RECENT_CHATS.length})</span>
+                    <span className="text-xs text-muted-foreground">({recentChats.length})</span>
                   </header>
                   <div className="flex flex-col gap-0.5">
-                    {RECENT_CHATS.map((chat) => (
-                      <button
+                    {recentChats.map((chat) => (
+                      <Link
                         key={chat.id}
-                        type="button"
-                        onClick={() =>
-                          router.push(
-                            `/agent/${chat.agentId}?chat=${chat.id}&name=${encodeURIComponent(chat.agent)}`
-                          )
+                        href={
+                          chat.agentId
+                            ? `/agent/${chat.agentId}?chat=${chat.id}${chat.agentName ? `&name=${encodeURIComponent(chat.agentName)}` : ""}&from=chat`
+                            : `/agent/new?chat=${chat.id}`
                         }
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted/60"
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left transition-colors hover:bg-black/5"
                       >
-                        {getAgentIcon(chat.agentId, "size-3.5 shrink-0 text-muted-foreground")}
-                        <span className="flex-1 truncate text-sm text-foreground">{chat.title}</span>
-                        <span className="shrink-0 text-xs text-muted-foreground/50">{chat.agent}</span>
-                        <span className="shrink-0 text-xs text-muted-foreground/40 ml-3">{chat.time}</span>
-                      </button>
+                        {getAgentIcon(chat.agentId)}
+                        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                          {chat.label}
+                        </span>
+                      </Link>
                     ))}
                   </div>
                 </div>
 
-                {/* Favourite chat assistants */}
+                {/* Favourite agents */}
                 <div className="space-y-6">
                   <header className="flex items-center gap-2">
                     <ChevronDownIcon className="size-4 text-muted-foreground" />
-                    <h2 className="font-medium">Favourite chat assistants</h2>
+                    <h2 className="font-medium">Favourite agents</h2>
                     <span className="text-xs text-muted-foreground">({FAVOURITE_CHAT_AGENTS.length})</span>
                   </header>
                   <div className="grid grid-cols-3 gap-6">

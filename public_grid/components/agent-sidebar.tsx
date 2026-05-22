@@ -39,7 +39,7 @@ function ChatSidebarLink({
     <Link
       href={
         item.agentId
-          ? `/agent/${item.agentId}?chat=${item.id}${item.agentName ? `&name=${encodeURIComponent(item.agentName)}` : ""}`
+          ? `/agent/${item.agentId}?chat=${item.id}${item.agentName ? `&name=${encodeURIComponent(item.agentName)}` : ""}&from=chat`
           : `/agent/new?chat=${item.id}`
       }
       className={cn(
@@ -359,7 +359,7 @@ export function AgentSidebar({
           )}
         >
           <StarIcon className="size-4 shrink-0" />
-          <span>Favourite</span>
+          <span>favourite agents</span>
           {favoriteAgents.length > 0 && (
             <span className="ml-auto text-xs text-muted-foreground/60">{favoriteAgents.length}</span>
           )}
@@ -484,14 +484,6 @@ export function AgentSidebar({
                     </button>
                   )}
                 </div>
-              </div>
-            )}
-            {filterAgentId && !activeChatId && (
-              <div className="flex w-full items-center gap-2 rounded-md bg-black/8 px-3 py-1.5 font-medium">
-                {getAgentIcon(filterAgentId)}
-                <span className="min-w-0 flex-1 truncate text-xs text-foreground">
-                  New conversation
-                </span>
               </div>
             )}
             {filteredChats.map((item) => (
