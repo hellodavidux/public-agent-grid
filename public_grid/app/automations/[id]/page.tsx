@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { AutomationSetupModal } from "@/components/automation-setup-modal";
 import { AgentSidebar } from "@/components/agent-sidebar";
 import { Switch } from "@/components/ui/switch";
@@ -609,7 +609,7 @@ function OverviewPanel({
   );
 }
 
-export default function AutomationDetailPage() {
+function AutomationDetailPageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -851,5 +851,13 @@ export default function AutomationDetailPage() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+export default function AutomationDetailPage() {
+  return (
+    <Suspense>
+      <AutomationDetailPageContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { Suspense, useState, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ShieldCheck,
@@ -306,14 +306,15 @@ function agentMatchesTag(
   return false;
 }
 
-export default function AgentLibraryPage() {
+function AgentLibraryPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get("category") ?? "all");
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [toolSearchQuery, setToolSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("last-updated");
   const [integrationFilter, setIntegrationFilter] = useState("all");
-  const [interfaceFilter, setInterfaceFilter] = useState("all");
+  const [interfaceFilter, setInterfaceFilter] = useState(() => searchParams.get("interface") ?? "all");
   const [favorites, setFavorites] = useState<Set<string>>(
     () => new Set(allAgents.filter((a) => a.category.includes("favorites")).map((a) => a.id))
   );
@@ -331,6 +332,18 @@ export default function AgentLibraryPage() {
     setSelectedCategory(cat);
     if (cat !== "all") setSelectedTagId(null);
   }, []);
+
+  const handleInterfaceFilterChange = useCallback((value: string) => {
+    setInterfaceFilter(value);
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === "all") {
+      params.delete("interface");
+    } else {
+      params.set("interface", value);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : "/", { scroll: false });
+  }, [router, searchParams]);
 
   const favoriteAgents = useMemo(
     () => allAgents.filter((a) => favorites.has(a.id)).map((a) => ({ id: a.id, name: a.name })),
@@ -381,22 +394,21 @@ export default function AgentLibraryPage() {
 
     if (selectedCategory === "all") {
       const favourites = filteredBySidebarSearch.filter((a) => favorites.has(a.id));
-      const result: AgentSection[] = [
-        {
-          id: "all-agents",
-          title: "All Agents",
-          agents: sortAgentsForAllGrid(filteredBySidebarSearch, favorites),
-        },
-      ];
+      const result: AgentSection[] = [];
       if (favourites.length > 0) {
         result.push({
           id: "favourites",
           title: "Favourites",
           agents: favourites,
           showCount: false,
-          initialOpen: false,
+          initialOpen: true,
         });
       }
+      result.push({
+        id: "all-agents",
+        title: "All Agents",
+        agents: sortAgentsForAllGrid(filteredBySidebarSearch, favorites),
+      });
       return result;
     }
 
@@ -431,7 +443,6 @@ export default function AgentLibraryPage() {
     ];
   }, [selectedCategory, selectedTagId, favorites]);
 
-  const router = useRouter();
   const handleAgentClick = useCallback(
     (agent: {
       id: string;
@@ -441,9 +452,14 @@ export default function AgentLibraryPage() {
       authorName?: string;
       labels?: string[];
     }) => {
-      const base = agent.interfaceType === "Automation"
-        ? `/automations/${agent.id}`
-        : `/agent/${agent.id}`;
+      const base =
+        agent.interfaceType === "Automation"
+          ? `/automations/${agent.id}`
+          : agent.interfaceType === "Form"
+          ? `/form/${agent.id}`
+          : agent.interfaceType === "Batch"
+          ? `/batch/${agent.id}`
+          : `/agent/${agent.id}`;
       const params = new URLSearchParams({
         name: agent.name,
         description: agent.description,
@@ -480,7 +496,7 @@ export default function AgentLibraryPage() {
           integrationFilter={integrationFilter}
           onIntegrationFilterChange={setIntegrationFilter}
           interfaceFilter={interfaceFilter}
-          onInterfaceFilterChange={setInterfaceFilter}
+          onInterfaceFilterChange={handleInterfaceFilterChange}
           selectedCategory={selectedCategory}
           selectedTagId={selectedTagId}
           onTagSelect={(tagId) => {
@@ -491,9 +507,17 @@ export default function AgentLibraryPage() {
           onNewChat={() => router.push("/agent/new")}
           favorites={favorites}
           onToggleFavorite={toggleFavorite}
-          title={selectedCategory === "my-agents" ? "Favourite" : "All Agents"}
+          title={selectedCategory === "my-agents" ? "favourite agents" : "All Agents"}
         />
       </div>
     </div>
+  );
+}
+
+export default function AgentLibraryPage() {
+  return (
+    <Suspense>
+      <AgentLibraryPageContent />
+    </Suspense>
   );
 }
